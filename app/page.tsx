@@ -1,69 +1,211 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState } from "react";
+import PetalBackground from "./components/PetalBackground";
+import Navbar from "./components/Navbar";
+import HeroSection from "./components/HeroSection";
+import FeatureBar from "./components/FeatureBar";
+import OrderSection, {
+  ROBUX_PACKAGES,
+  RobuxPackage,
+  PaymentMethod,
+} from "./components/OrderSection";
+import AlurTransaksi from "./components/AlurTransaksi";
+import TestimonialSection from "./components/TestimonialSection";
+import Footer from "./components/Footer";
+import StickyBottomBar from "./components/StickyBottomBar";
+import CheckoutModal from "./components/CheckoutModal";
+import CustomerServiceModal from "./components/CustomerServiceModal";
+import CartDrawer, { CartItem } from "./components/CartDrawer";
+import { CheckCircle2 } from "lucide-react";
 
 export default function Home() {
+  // Global order state
+  const [username, setUsername] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [selectedPackage, setSelectedPackage] = useState<RobuxPackage>(
+    ROBUX_PACKAGES[1] // Default to 2.200 Robux Promo
+  );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("website");
+
+  // Cart state
+  const [cartItems, setCartItems] = useState<CartItem[]>([
+    { package: ROBUX_PACKAGES[1], quantity: 1 },
+  ]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Modals state
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCSOpen, setIsCSOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Cart operations
+  const handleAddToCart = (pkg: RobuxPackage) => {
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.package.id === pkg.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.package.id === pkg.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prev, { package: pkg, quantity: 1 }];
+    });
+
+    // Also select this package as current active
+    setSelectedPackage(pkg);
+
+    // Show brief toast
+    setToastMessage(`${new Intl.NumberFormat("id-ID").format(pkg.amount)} Robux ditambahkan ke keranjang!`);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleUpdateQuantity = (pkgId: number, delta: number) => {
+    setCartItems((prev) =>
+      prev
+        .map((item) => {
+          if (item.package.id === pkgId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
+    );
+  };
+
+  const handleRemoveItem = (pkgId: number) => {
+    setCartItems((prev) => prev.filter((item) => item.package.id !== pkgId));
+  };
+
+  // Cart totals calculation
+  const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = cartItems.reduce(
+    (sum, item) => sum + item.package.price * item.quantity,
+    0
+  );
+  const totalRobux = cartItems.reduce(
+    (sum, item) => sum + item.package.amount * item.quantity,
+    0
+  );
+
+  // Quick CTA actions
+  const handleSelectPromo = () => {
+    const promoItem = ROBUX_PACKAGES.find((p) => p.amount === 2200) || ROBUX_PACKAGES[0];
+    setSelectedPackage(promoItem);
+    handleAddToCart(promoItem);
+    const orderElem = document.getElementById("order-section");
+    if (orderElem) {
+      orderElem.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleScrollToTestimonial = () => {
+    const testimoniElem = document.getElementById("testimoni");
+    if (testimoniElem) {
+      testimoniElem.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handlePayClick = () => {
+    if (!username.trim()) {
+      const orderElem = document.getElementById("order-section");
+      if (orderElem) {
+        orderElem.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    setIsCheckoutOpen(true);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="relative min-h-screen flex flex-col bg-[#FFF9FA] overflow-x-clip">
+      {/* Floating Sakura Petals */}
+      <PetalBackground />
+
+      {/* Toast Notification when adding to cart */}
+      {toastMessage && (
+        <div className="fixed top-20 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-2xl border border-pink-500/30 animate-in slide-in-from-top-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Sticky Header Navbar */}
+      <Navbar
+        onOpenCS={() => setIsCSOpen(true)}
+        onOpenCart={() => setIsCartOpen(true)}
+        cartCount={totalCartCount}
+      />
+
+      {/* Main Content Area */}
+      <main className="relative z-10 flex-1 flex flex-col">
+        {/* Hero Showcase with Countdown */}
+        <HeroSection
+          onSelectPromo={handleSelectPromo}
+          onOpenTestimonial={handleScrollToTestimonial}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* 5 Value Badges */}
+        <FeatureBar />
+
+        {/* 3-Step Interactive Ordering */}
+        <OrderSection
+          username={username}
+          setUsername={setUsername}
+          whatsappNumber={whatsappNumber}
+          setWhatsappNumber={setWhatsappNumber}
+          selectedPackage={selectedPackage}
+          setSelectedPackage={setSelectedPackage}
+          paymentMethod={paymentMethod}
+          setPaymentMethod={setPaymentMethod}
+          onAddToCart={handleAddToCart}
+        />
+
+        {/* Cara Order / Alur Transaksi */}
+        <AlurTransaksi />
+
+        {/* Testimoni Member (Dibawah Cara Order) */}
+        <TestimonialSection onOpenCS={() => setIsCSOpen(true)} />
       </main>
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Floating Order Summary Bottom Bar */}
+      <StickyBottomBar
+        totalAmount={totalAmount > 0 ? totalAmount : selectedPackage.price}
+        totalRobux={totalRobux > 0 ? totalRobux : selectedPackage.amount}
+        totalItemsCount={totalCartCount > 0 ? totalCartCount : 1}
+        onPayClick={handlePayClick}
+      />
+
+      {/* Cart Drawer */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveItem}
+        onCheckout={handlePayClick}
+      />
+
+      {/* Modals & Drawers */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        username={username}
+        whatsappNumber={whatsappNumber}
+        setWhatsappNumber={setWhatsappNumber}
+        selectedPackage={selectedPackage}
+        cartItems={cartItems}
+        paymentMethod={paymentMethod}
+      />
+
+      <CustomerServiceModal
+        isOpen={isCSOpen}
+        onClose={() => setIsCSOpen(false)}
+      />
     </div>
   );
 }

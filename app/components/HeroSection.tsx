@@ -1,0 +1,187 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
+import { Zap, ArrowRight, Clock } from "lucide-react";
+
+interface HeroSectionProps {
+  onSelectPromo: () => void;
+  onOpenTestimonial: () => void;
+}
+
+export default function HeroSection({
+  onSelectPromo,
+  onOpenTestimonial,
+}: HeroSectionProps) {
+  const [timeLeft, setTimeLeft] = useState({
+    days: 26,
+    hours: 14,
+    minutes: 49,
+    seconds: 16,
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: 59, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        } else if (prev.days > 0) {
+          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const format2Digits = (num: number) => String(num).padStart(2, "0");
+
+  return (
+    <section className="relative z-10 max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
+      <div className="relative overflow-hidden rounded-3xl bg-white border border-pink-100 p-6 sm:p-8 lg:p-10 shadow-[0_10px_35px_-10px_rgba(255,42,133,0.07)]">
+        {/* Soft subtle glow */}
+        <div className="absolute top-0 right-1/4 w-80 h-80 bg-pink-200/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+          {/* Left Column */}
+          <div className="space-y-4 max-w-2xl">
+            {/* Promo Badges */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center px-3 py-1 rounded-full border border-pink-300 bg-pink-50/50 text-pink-600 font-bold text-[10px] tracking-wide uppercase">
+                PROMO SPESIAL BULAN INI
+              </span>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#ff2a85] text-white font-extrabold text-[10px] tracking-wide uppercase shadow-xs">
+                LIMITED STOCK
+              </span>
+            </div>
+
+            {/* Main Headline */}
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 leading-tight">
+                ROBUX BULAN <span className="text-[#ff2a85]">INI</span>
+              </h1>
+              <p className="mt-1.5 text-xs sm:text-sm text-slate-500 font-medium">
+                Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!
+              </p>
+            </div>
+
+            {/* Price Box */}
+            <div className="pt-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900">
+                  2.200
+                </span>
+                <span className="text-xs font-bold text-slate-500 tracking-wider">
+                  ROBUX
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2.5 mt-0.5">
+                <span className="text-xs sm:text-sm text-slate-400 line-through font-semibold">
+                  2.000 Robux
+                </span>
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-[#ff2a85] tracking-tight">
+                  Rp 45.000
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                onClick={onSelectPromo}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#ff2a85] to-[#f43f7e] hover:from-[#e60067] hover:to-[#e11d67] text-white font-bold text-xs sm:text-sm shadow-[0_6px_20px_-4px_rgba(255,42,133,0.45)] transition-all cursor-pointer active:scale-95"
+              >
+                <Zap className="w-4 h-4 fill-yellow-300 text-yellow-300" />
+                <span>Beli Robux Sekarang</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={onOpenTestimonial}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white hover:bg-pink-50 border border-pink-200 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-xs"
+              >
+                <span>Lihat Testimoni</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Countdown Card */}
+          <div className="w-full lg:w-[350px] shrink-0">
+            <div className="rounded-2xl bg-white border border-pink-100/90 p-4 sm:p-5 shadow-sm">
+              {/* Header */}
+              <div className="flex items-center justify-center gap-1.5 text-center text-[11px] font-bold tracking-wider text-[#ff2a85] uppercase mb-4">
+                <Clock className="w-3.5 h-3.5" />
+                <span>PROMO BERAKHIR DALAM</span>
+              </div>
+
+              {/* 4 Countdown Boxes */}
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-pink-50/60 border border-pink-100">
+                  <span className="text-lg sm:text-xl font-black text-[#ff2a85]">
+                    {format2Digits(timeLeft.days)}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">
+                    HARI
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-pink-50/60 border border-pink-100">
+                  <span className="text-lg sm:text-xl font-black text-[#ff2a85]">
+                    {format2Digits(timeLeft.hours)}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">
+                    JAM
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-pink-50/60 border border-pink-100">
+                  <span className="text-lg sm:text-xl font-black text-[#ff2a85]">
+                    {format2Digits(timeLeft.minutes)}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">
+                    MENIT
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-pink-50/60 border border-pink-100">
+                  <span className="text-lg sm:text-xl font-black text-[#ff2a85]">
+                    {format2Digits(timeLeft.seconds)}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">
+                    DETIK
+                  </span>
+                </div>
+              </div>
+
+              {/* Guarantee Mini Card inside */}
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-pink-50/50 border border-pink-100">
+                <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-pink-200">
+                  <Image
+                    src="/logo.png"
+                    alt="Garansi"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-slate-800 flex items-center gap-1">
+                    <span>Garansi Proses Kilat</span>
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Langsung otomatis ke akun kamu
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
