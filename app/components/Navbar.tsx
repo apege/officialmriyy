@@ -2,7 +2,8 @@
 
 import React from "react";
 import Image from "next/image";
-import { MessageCircle, Flame, HelpCircle, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, Flame, HelpCircle, CheckCircle2, ShieldCheck } from "lucide-react";
 
 interface NavbarProps {
   onOpenCS: () => void;
@@ -52,7 +53,7 @@ export default function Navbar({
         </div>
 
         {/* Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8 text-xs sm:text-sm font-semibold text-slate-600">
+        <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-xs sm:text-sm font-semibold text-slate-600">
           <button
             onClick={() => scrollToSection("order-section")}
             className="flex items-center gap-1.5 hover:text-[#ff2a85] transition-colors cursor-pointer"
@@ -76,6 +77,14 @@ export default function Navbar({
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
             <span>Testimoni</span>
           </button>
+
+          <Link
+            href="/admin"
+            className="flex items-center gap-1.5 text-xs font-bold text-[#ff2a85] bg-pink-50 hover:bg-pink-100 px-2.5 py-1 rounded-full border border-pink-200 transition-all"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[#ff2a85]" />
+            <span>Admin Panel</span>
+          </Link>
         </nav>
 
         {/* Action Buttons */}

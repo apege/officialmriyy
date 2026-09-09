@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ShieldCheck, Heart } from "lucide-react";
 
 export default function Footer() {
@@ -57,6 +58,11 @@ export default function Footer() {
                 <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="hover:text-[#ff2a85] transition-colors">
                   Hubungi Layanan CS
                 </a>
+              </li>
+              <li>
+                <Link href="/admin" className="hover:text-[#ff2a85] transition-colors text-[#ff2a85] font-bold flex items-center gap-1">
+                  <span>Dashboard Admin</span>
+                </Link>
               </li>
             </ul>
           </div>
