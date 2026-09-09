@@ -128,21 +128,21 @@ export default function OrderSection({
   };
 
   return (
-    <div id="order-section" className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 space-y-4">
+    <div id="order-section" className="max-w-[1400px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3 space-y-3 sm:space-y-4">
       {/* ========================================================================= */}
       {/* STEP 1: MASUKKAN DATA AKUN */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl bg-white border border-pink-100 p-5 sm:p-7 shadow-xs">
+      <div className="rounded-3xl bg-white border border-pink-100 p-4 sm:p-7 shadow-xs">
         {/* Step Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-7 h-7 rounded-full bg-[#ff2a85] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#ff2a85] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
             1
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+            <h2 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight">
               Masukkan Data Akun
             </h2>
-            <p className="text-[11px] text-slate-400 font-medium">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">
               Isi data username Roblox kamu untuk pengiriman pesanan otomatis
             </p>
           </div>
@@ -155,7 +155,7 @@ export default function OrderSection({
             <span>Username Roblox</span>
           </label>
 
-          <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5">
             <div className="relative flex-1">
               <input
                 type="text"
@@ -170,14 +170,14 @@ export default function OrderSection({
                   }
                 }}
                 placeholder="Contoh: BloxyGamer123"
-                className="w-full px-4 py-3 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white outline-none text-slate-900 font-medium text-xs sm:text-sm placeholder:text-slate-400 transition-all"
+                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white outline-none text-slate-900 font-medium text-xs sm:text-sm placeholder:text-slate-400 transition-all"
               />
             </div>
 
             <button
               onClick={handleCheckAccount}
               disabled={!username.trim() || isCheckingAccount}
-              className="flex items-center justify-center gap-1.5 px-6 py-3 rounded-2xl bg-[#ff2a85] hover:bg-[#e60067] disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center justify-center gap-1.5 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-[#ff2a85] hover:bg-[#e60067] disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition-all shadow-xs active:scale-95 cursor-pointer shrink-0 w-full sm:w-auto"
             >
               {isCheckingAccount ? (
                 <>
@@ -197,7 +197,7 @@ export default function OrderSection({
           {accountChecked && username.trim() && (
             <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 animate-in fade-in duration-200">
               {avatarUrl && (
-                <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-emerald-300 shadow-xs relative">
+                <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-emerald-300 shadow-xs relative shrink-0">
                   <img
                     src={avatarUrl}
                     alt={username}
@@ -207,7 +207,7 @@ export default function OrderSection({
               )}
               <div className="text-xs">
                 <div className="flex items-center gap-1 font-bold">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span>Akun Ditemukan: {username}</span>
                 </div>
                 <p className="text-emerald-700 text-[10px] font-medium">
@@ -219,7 +219,7 @@ export default function OrderSection({
 
           {/* Nomor WhatsApp Input Field */}
           <div className="space-y-1.5 pt-1">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 flex-wrap">
               <Phone className="w-3.5 h-3.5 text-emerald-600" />
               <span>Nomor WhatsApp</span>
               <span className="text-[10px] text-pink-600 font-semibold">(Untuk Notifikasi & Bukti)</span>
@@ -230,14 +230,14 @@ export default function OrderSection({
               value={whatsappNumber}
               onChange={(e) => setWhatsappNumber(e.target.value)}
               placeholder="Contoh: 081234567890"
-              className="w-full px-4 py-3 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white outline-none text-slate-900 font-medium text-xs sm:text-sm placeholder:text-slate-400 transition-all"
+              className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white outline-none text-slate-900 font-medium text-xs sm:text-sm placeholder:text-slate-400 transition-all"
             />
           </div>
 
           {/* Note Info */}
-          <div className="flex items-start gap-1.5 text-[11px] text-slate-400 pt-0.5">
+          <div className="flex items-start gap-1.5 text-[10px] sm:text-[11px] text-slate-400 pt-0.5">
             <AlertCircle className="w-3.5 h-3.5 text-[#ff2a85] shrink-0 mt-0.5" />
-            <p className="italic">
+            <p className="italic leading-tight">
               *Silakan masukkan username Roblox Anda dengan benar untuk proses transaksi otomatis 5-10 menit. Akun aman dan privasi terjaga 100%.
             </p>
           </div>
@@ -247,31 +247,31 @@ export default function OrderSection({
       {/* ========================================================================= */}
       {/* STEP 2: PILIH ROBUX */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl bg-white border border-pink-100 p-5 sm:p-7 shadow-xs">
+      <div className="rounded-3xl bg-white border border-pink-100 p-4 sm:p-7 shadow-xs">
         {/* Step Header & Filters */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-[#ff2a85] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#ff2a85] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
               2
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+              <h2 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
                 <span>Pilih Robux</span>
-                <span className="text-[11px] font-semibold text-[#ff2a85]">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-[#ff2a85]">
                   (Pricelist Resmi official.mriyy)
                 </span>
               </h2>
-              <p className="text-[11px] text-slate-400 font-medium">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">
                 Pilih paket nominal Robux yang ingin Anda beli
               </p>
             </div>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Filter Pills with smooth horizontal scrolling on mobile */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar sm:flex-wrap">
             <button
               onClick={() => setActiveTab("all")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[10px] sm:text-[11px] transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "all"
                   ? "bg-[#ff2a85] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-[#ff2a85]"
@@ -283,7 +283,7 @@ export default function OrderSection({
 
             <button
               onClick={() => setActiveTab("populer")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[10px] sm:text-[11px] transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "populer"
                   ? "bg-[#ff2a85] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-[#ff2a85]"
@@ -295,7 +295,7 @@ export default function OrderSection({
 
             <button
               onClick={() => setActiveTab("promo")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[10px] sm:text-[11px] transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "promo"
                   ? "bg-[#ff2a85] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-[#ff2a85]"
@@ -307,7 +307,7 @@ export default function OrderSection({
 
             <button
               onClick={() => setActiveTab("sultan")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[10px] sm:text-[11px] transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "sultan"
                   ? "bg-[#ff2a85] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-[#ff2a85]"
@@ -320,7 +320,7 @@ export default function OrderSection({
         </div>
 
         {/* Packages Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
           {filteredPackages.map((pkg) => {
             const isSelected = selectedPackage.id === pkg.id;
 
@@ -328,26 +328,26 @@ export default function OrderSection({
               <div
                 key={pkg.id}
                 onClick={() => setSelectedPackage(pkg)}
-                className={`relative rounded-2xl p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between select-none ${
+                className={`relative rounded-2xl p-3 sm:p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between select-none ${
                   isSelected
                     ? "bg-white border-2 border-[#ff2a85] shadow-[0_4px_15px_-3px_rgba(255,42,133,0.25)]"
                     : "bg-white border border-pink-100 hover:border-pink-300 hover:bg-pink-50/20"
                 }`}
               >
                 {/* Top Badge (if any) & Selection Indicator */}
-                <div className="flex items-center justify-between mb-2 min-h-[20px]">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2 min-h-[20px]">
                   {pkg.tag === "PROMO" && (
-                    <span className="px-2 py-0.5 rounded-full bg-[#ff2a85] text-white text-[9px] font-black tracking-wider uppercase shadow-xs">
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ff2a85] text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
                       PROMO
                     </span>
                   )}
                   {pkg.tag === "POPULER" && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black tracking-wider uppercase shadow-xs">
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
                       POPULER
                     </span>
                   )}
                   {pkg.tag === "SULTAN" && (
-                    <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[9px] font-black tracking-wider uppercase shadow-xs">
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-purple-600 text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
                       SULTAN
                     </span>
                   )}
@@ -360,19 +360,19 @@ export default function OrderSection({
                       e.stopPropagation();
                       onAddToCart(pkg);
                     }}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 ${
+                    className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 ${
                       isSelected
                         ? "bg-[#ff2a85] text-white hover:bg-[#e60067]"
                         : "bg-pink-50 hover:bg-[#ff2a85] text-[#ff2a85] hover:text-white border border-pink-200/60"
                     }`}
                   >
-                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
                   </button>
                 </div>
 
                 {/* Robux Coin Icon & Amount */}
-                <div className="flex items-center gap-3 my-1">
-                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 my-1">
+                  <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
                     <Image
                       src="/robux.webp"
                       alt="Robux"
@@ -380,26 +380,26 @@ export default function OrderSection({
                       className="object-contain drop-shadow-xs"
                     />
                   </div>
-                  <div>
-                    <div className="font-extrabold text-sm sm:text-base text-slate-900 leading-tight">
+                  <div className="overflow-hidden">
+                    <div className="font-extrabold text-xs sm:text-base text-slate-900 leading-tight truncate">
                       {formatRobux(pkg.amount)}{" "}
-                      <span className="text-[10px] font-bold text-slate-400">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">
                         Robux
                       </span>
                     </div>
                     {pkg.originalPrice && (
-                      <div className="text-[9px] text-slate-400 line-through font-semibold">
+                      <div className="text-[8px] sm:text-[9px] text-slate-400 line-through font-semibold truncate">
                         {formatRupiah(pkg.originalPrice)}
                       </div>
                     )}
-                    <div className="font-black text-xs sm:text-sm text-[#ff2a85]">
+                    <div className="font-black text-xs sm:text-sm text-[#ff2a85] truncate">
                       {formatRupiah(pkg.price)}
                     </div>
                   </div>
                 </div>
 
                 {/* Card Footer: INSTAN & Status */}
-                <div className="mt-3 pt-2.5 border-t border-pink-50 flex items-center justify-between text-[10px]">
+                <div className="mt-2 pt-2 border-t border-pink-50 flex items-center justify-between text-[9px] sm:text-[10px]">
                   <span className="inline-flex items-center gap-0.5 font-bold text-emerald-600 uppercase tracking-wider">
                     <Zap className="w-2.5 h-2.5 fill-emerald-500" />
                     <span>INSTAN</span>
@@ -422,28 +422,28 @@ export default function OrderSection({
       {/* ========================================================================= */}
       {/* STEP 3: PILIH PEMBAYARAN */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl bg-white border border-pink-100 p-5 sm:p-7 shadow-xs">
+      <div className="rounded-3xl bg-white border border-pink-100 p-4 sm:p-7 shadow-xs">
         {/* Step Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-7 h-7 rounded-full bg-[#ff2a85] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#ff2a85] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
             3
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+            <h2 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight">
               Pilih Pembayaran
             </h2>
-            <p className="text-[11px] text-slate-400 font-medium">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">
               Pilih metode pembayaran yang paling nyaman untuk Anda
             </p>
           </div>
         </div>
 
         {/* 2 Payment Methods Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* Option 1: Pembayaran via Website (QRIS) */}
           <div
             onClick={() => setPaymentMethod("website")}
-            className={`rounded-2xl p-4 sm:p-5 transition-all duration-150 cursor-pointer flex flex-col justify-between ${
+            className={`rounded-2xl p-3.5 sm:p-5 transition-all duration-150 cursor-pointer flex flex-col justify-between ${
               paymentMethod === "website"
                 ? "bg-white border-2 border-[#ff2a85] shadow-xs"
                 : "bg-white border border-pink-100 hover:border-pink-300 hover:bg-pink-50/10"
@@ -451,22 +451,22 @@ export default function OrderSection({
           >
             <div>
               <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-pink-50 text-[#ff2a85] flex items-center justify-center border border-pink-100">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-pink-50 text-[#ff2a85] flex items-center justify-center border border-pink-100 shrink-0">
                     <QrCode className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="font-bold text-xs sm:text-sm text-slate-900">
                       Pembayaran via Website
                     </h3>
-                    <p className="text-[10px] font-semibold text-[#ff2a85]">
+                    <p className="text-[9px] sm:text-[10px] font-semibold text-[#ff2a85]">
                       Scan QRIS & Upload Bukti
                     </p>
                   </div>
                 </div>
 
                 <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                     paymentMethod === "website"
                       ? "bg-[#ff2a85] text-white"
                       : "border border-slate-200"
@@ -478,12 +478,12 @@ export default function OrderSection({
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 leading-relaxed mb-3">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 leading-relaxed mb-3">
                 Scan barcode QRIS (BCA, Mandiri, BRI, DANA, GoPay, OVO, ShopeePay) lalu upload bukti transfer langsung di website.
               </p>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-pink-50 text-[10px]">
+            <div className="flex items-center justify-between pt-2 border-t border-pink-50 text-[9px] sm:text-[10px]">
               <span className="inline-flex items-center gap-1 font-bold text-[#ff2a85]">
                 <Zap className="w-3 h-3 fill-[#ff2a85]" />
                 <span>Verifikasi Otomatis</span>
@@ -502,7 +502,7 @@ export default function OrderSection({
           {/* Option 2: Pembayaran via WhatsApp */}
           <div
             onClick={() => setPaymentMethod("whatsapp")}
-            className={`rounded-2xl p-4 sm:p-5 transition-all duration-150 cursor-pointer flex flex-col justify-between ${
+            className={`rounded-2xl p-3.5 sm:p-5 transition-all duration-150 cursor-pointer flex flex-col justify-between ${
               paymentMethod === "whatsapp"
                 ? "bg-white border-2 border-emerald-500 shadow-xs"
                 : "bg-white border border-pink-100 hover:border-emerald-300 hover:bg-emerald-50/10"
@@ -510,22 +510,22 @@ export default function OrderSection({
           >
             <div>
               <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
                     <MessageCircle className="w-4 h-4 fill-emerald-100" />
                   </div>
                   <div>
                     <h3 className="font-bold text-xs sm:text-sm text-slate-900">
                       Pembayaran via WhatsApp
                     </h3>
-                    <p className="text-[10px] font-semibold text-emerald-600">
+                    <p className="text-[9px] sm:text-[10px] font-semibold text-emerald-600">
                       Chat Langsung dengan Admin
                     </p>
                   </div>
                 </div>
 
                 <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                     paymentMethod === "whatsapp"
                       ? "bg-emerald-500 text-white"
                       : "border border-slate-200"
@@ -537,12 +537,12 @@ export default function OrderSection({
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 leading-relaxed mb-3">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 leading-relaxed mb-3">
                 Pesan langsung melalui WhatsApp resmi official.mriyy dengan format pesanan instan, dibantu langsung oleh admin sampai selesai.
               </p>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-emerald-50 text-[10px]">
+            <div className="flex items-center justify-between pt-2 border-t border-emerald-50 text-[9px] sm:text-[10px]">
               <span className="inline-flex items-center gap-1 font-bold text-emerald-600">
                 <ShieldCheck className="w-3 h-3" />
                 <span>Fast Respon 24 Jam</span>
