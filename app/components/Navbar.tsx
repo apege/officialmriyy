@@ -2,19 +2,22 @@
 
 import React from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { MessageCircle, Flame, HelpCircle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { MessageCircle, Flame, HelpCircle, CheckCircle2 } from "lucide-react";
 
 interface NavbarProps {
   onOpenCS: () => void;
   onOpenCart: () => void;
   cartCount?: number;
+  storeName?: string;
+  logoUrl?: string;
 }
 
 export default function Navbar({
   onOpenCS,
   onOpenCart,
   cartCount = 1,
+  storeName = "official.mriyy",
+  logoUrl = "/logo.png",
 }: NavbarProps) {
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -22,6 +25,10 @@ export default function Navbar({
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
+
+  const nameParts = storeName.split(".");
+  const prefix = nameParts[0] || "official";
+  const suffix = nameParts.length > 1 ? `.${nameParts.slice(1).join(".")}` : "";
 
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-pink-100 shadow-[0_2px_15px_-4px_rgba(255,42,133,0.08)]">
@@ -33,8 +40,8 @@ export default function Navbar({
         >
           <div className="relative w-8 h-8 sm:w-10 sm:h-10 transition-transform duration-200 group-hover:scale-105">
             <Image
-              src="/logo.png"
-              alt="official.mriyy logo"
+              src={logoUrl || "/logo.png"}
+              alt={`${storeName} logo`}
               fill
               className="object-contain"
               priority
@@ -43,7 +50,8 @@ export default function Navbar({
           <div>
             <div className="flex items-center">
               <span className="font-extrabold text-sm sm:text-lg tracking-tight text-slate-900 leading-none">
-                official<span className="text-[#ff2a85]">.mriyy</span>
+                {prefix}
+                {suffix && <span className="text-[#ff2a85]">{suffix}</span>}
               </span>
             </div>
             <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
@@ -77,14 +85,6 @@ export default function Navbar({
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
             <span>Testimoni</span>
           </button>
-
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 text-xs font-bold text-[#ff2a85] bg-pink-50 hover:bg-pink-100 px-2.5 py-1 rounded-full border border-pink-200 transition-all"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#ff2a85]" />
-            <span>Admin Panel</span>
-          </Link>
         </nav>
 
         {/* Action Buttons */}

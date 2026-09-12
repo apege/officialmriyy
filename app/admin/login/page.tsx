@@ -24,27 +24,33 @@ export default function AdminLoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg("");
 
-    setTimeout(() => {
-      // Demo authentication logic
-      if (
-        (username.trim().toLowerCase() === "admin" || username.trim().toLowerCase() === "mriyy") &&
-        (password === "admin123" || password === "123456" || password.length >= 4)
-      ) {
-        // Save auth flag in localStorage/cookie if needed
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("officialmriyy_admin_auth", "true");
+          localStorage.setItem("officialmriyy_admin_auth", "valid_session");
+          document.cookie = "officialmriyy_admin_token=valid_session; path=/; max-age=604800; SameSite=Lax";
         }
         router.push("/admin");
       } else {
         setIsLoading(false);
-        setErrorMsg("Username atau Password salah! (Default: admin / admin123)");
+        setErrorMsg(data.error || "Username atau Password salah!");
       }
-    }, 600);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg("Terjadi kesalahan jaringan atau server.");
+    }
   };
 
   return (

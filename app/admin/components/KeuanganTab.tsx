@@ -25,76 +25,52 @@ export interface MutationItem {
   status: "LUNAS";
 }
 
-const MOCK_MUTATIONS: MutationItem[] = [
-  {
-    id: "BLX21707876",
-    username: "frdzzzz_1",
-    amount: 35000,
-    robux: 1800,
-    method: "website",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-  {
-    id: "BLX33931646",
-    username: "vineyard_0915",
-    amount: 45000,
-    robux: 2200,
-    method: "website",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-  {
-    id: "BLX70412780",
-    username: "chrysabli",
-    amount: 50000,
-    robux: 2700,
-    method: "website",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-  {
-    id: "BLX96601163",
-    username: "vys18",
-    amount: 35000,
-    robux: 1800,
-    method: "website",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-  {
-    id: "BLX02155112",
-    username: "RACHELL111113",
-    amount: 45000,
-    robux: 2200,
-    method: "website",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-  {
-    id: "BLX21569437",
-    username: "JanaNbx5",
-    amount: 35000,
-    robux: 1800,
-    method: "website",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-  {
-    id: "BLX25532546",
-    username: "zallywillyoey",
-    amount: 100000,
-    robux: 5500,
-    method: "whatsapp",
-    date: "9 Sep 2026",
-    status: "LUNAS",
-  },
-];
-
 export default function KeuanganTab() {
-  const [mutations, setMutations] = useState<MutationItem[]>(MOCK_MUTATIONS);
+  const [mutations, setMutations] = useState<MutationItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [methodFilter, setMethodFilter] = useState<"all" | "website" | "whatsapp">("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const fetchFinanceData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/orders");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
+          const validOrders = data.orders.filter(
+            (o: any) => o.order_status !== "cancelled"
+          );
+          if (validOrders.length > 0) {
+            const mapped: MutationItem[] = validOrders.map((o: any) => ({
+              id: o.order_code,
+              username: o.roblox_username,
+              amount: Number(o.price) || 0,
+              robux: Number(o.robux) || 0,
+              method: String(o.payment_method || "").toLowerCase().includes("whatsapp") ? "whatsapp" : "website",
+              date: o.created_at
+                ? new Date(o.created_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Hari ini",
+              status: "LUNAS",
+            }));
+            setMutations(mapped);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching finance data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchFinanceData();
+  }, []);
 
   const filteredMutations = mutations.filter((m) => {
     const matchesSearch =
@@ -145,11 +121,12 @@ export default function KeuanganTab() {
         </div>
 
         <button
-          onClick={() => setMutations([...mutations])}
+          onClick={fetchFinanceData}
+          disabled={loading}
           className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-pink-50 hover:bg-pink-100 text-[#ff2a85] font-extrabold text-xs border border-pink-200 shadow-xs transition-all cursor-pointer shrink-0"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh Data</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          <span>{loading ? "Memuat..." : "Refresh Data"}</span>
         </button>
       </div>
 

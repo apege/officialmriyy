@@ -1,53 +1,116 @@
 "use client";
 
 import React, { useState } from "react";
-import { Search, RefreshCw, Users, MessageCircle, ShoppingBag, ShieldCheck } from "lucide-react";
+import {
+  Search,
+  RefreshCw,
+  Users,
+  ShieldAlert,
+  ShieldCheck,
+  UserCheck,
+  Phone,
+  Layers,
+} from "lucide-react";
 
 export interface CustomerItem {
   id: string;
   username: string;
+  robloxDisplay?: string;
+  robloxUserId?: string;
   whatsapp: string;
   totalOrders: number;
   totalSpent: number;
-  lastOrderDate: string;
+  status: "AKTIF" | "BLACKLIST";
+  lastOrderDate?: string;
 }
 
-const MOCK_CUSTOMERS: CustomerItem[] = [
-  {
-    id: "CUST-001",
-    username: "BloxyKing99",
-    whatsapp: "081234567890",
-    totalOrders: 5,
-    totalSpent: 225000,
-    lastOrderDate: "Hari ini, 18:25 WIB",
-  },
-  {
-    id: "CUST-002",
-    username: "RobloxSultan_ID",
-    whatsapp: "085712345678",
-    totalOrders: 12,
-    totalSpent: 1850000,
-    lastOrderDate: "Hari ini, 18:10 WIB",
-  },
-  {
-    id: "CUST-003",
-    username: "GamerGirl_Alya",
-    whatsapp: "089698765432",
-    totalOrders: 3,
-    totalSpent: 105000,
-    lastOrderDate: "Hari ini, 17:45 WIB",
-  },
-];
-
 export default function PelangganTab() {
-  const [customers, setCustomers] = useState<CustomerItem[]>(MOCK_CUSTOMERS);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.whatsapp.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const [ordersRes, blacklistRes] = await Promise.all([
+        fetch("/api/orders"),
+        fetch("/api/blacklists"),
+      ]);
+
+      let ordersList: any[] = [];
+      let blacklistUsers = new Set<string>();
+
+      if (ordersRes.ok) {
+        const oData = await ordersRes.json();
+        if (oData.orders && Array.isArray(oData.orders)) {
+          ordersList = oData.orders;
+        }
+      }
+
+      if (blacklistRes.ok) {
+        const bData = await blacklistRes.json();
+        if (bData.blacklists && Array.isArray(bData.blacklists)) {
+          bData.blacklists.forEach((b: any) =>
+            blacklistUsers.add(b.roblox_username.toLowerCase())
+          );
+        }
+      }
+
+      if (ordersList.length > 0) {
+        const customerMap = new Map<string, CustomerItem>();
+        ordersList.forEach((ord: any) => {
+          const userKey = (ord.roblox_username || "anonymous").toLowerCase();
+          const existing = customerMap.get(userKey);
+
+          const spent = ord.order_status !== "cancelled" ? Number(ord.price) || 0 : 0;
+          const isBlk = blacklistUsers.has(userKey);
+
+          if (existing) {
+            existing.totalOrders += 1;
+            existing.totalSpent += spent;
+            existing.status = isBlk ? "BLACKLIST" : existing.status;
+          } else {
+            customerMap.set(userKey, {
+              id: `CUST-${String(customerMap.size + 1).padStart(3, "0")}`,
+              username: ord.roblox_username || "User",
+              robloxDisplay: ord.roblox_username || "User",
+              robloxUserId: ord.roblox_user_id || undefined,
+              whatsapp: ord.customer_phone || "WhatsApp Direct",
+              totalOrders: 1,
+              totalSpent: spent,
+              status: isBlk ? "BLACKLIST" : "AKTIF",
+              lastOrderDate: ord.created_at
+                ? new Date(ord.created_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                  })
+                : "Hari ini",
+            });
+          }
+        });
+        setCustomers(Array.from(customerMap.values()));
+      }
+    } catch (err) {
+      console.error("Error fetching customers:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = customers.filter((c) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      c.username.toLowerCase().includes(q) ||
+      (c.robloxDisplay && c.robloxDisplay.toLowerCase().includes(q)) ||
+      (c.robloxUserId && c.robloxUserId.toLowerCase().includes(q)) ||
+      c.whatsapp.toLowerCase().includes(q)
+    );
+  });
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -57,124 +120,199 @@ export default function PelangganTab() {
     }).format(num);
   };
 
+  const handleToggleBlacklist = async (cust: CustomerItem) => {
+    const isBlacklisted = cust.status === "BLACKLIST";
+    const nextStatus = isBlacklisted ? "AKTIF" : "BLACKLIST";
+
+    setCustomers((prev) =>
+      prev.map((item) =>
+        item.id === cust.id ? { ...item, status: nextStatus } : item
+      )
+    );
+
+    try {
+      if (isBlacklisted) {
+        await fetch(`/api/blacklists?username=${encodeURIComponent(cust.username)}`, {
+          method: "DELETE",
+        });
+      } else {
+        await fetch("/api/blacklists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roblox_username: cust.username,
+            reason: "Diblokir oleh Admin dari daftar pelanggan",
+            phone: cust.whatsapp !== "WhatsApp Direct" ? cust.whatsapp : null,
+          }),
+        });
+      }
+    } catch (err) {
+      console.error("Error toggling blacklist for customer:", err);
+    }
+
+    setToastMsg(
+      isBlacklisted
+        ? `Akun @${cust.username} berhasil diaktifkan kembali`
+        : `Akun @${cust.username} telah dimasukkan ke daftar Blacklist`
+    );
+
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* 1. Header Bar (Matching Screenshot 7) */}
-      <div className="flex items-center justify-between gap-4">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-xs font-bold border border-slate-700 animate-in slide-in-from-bottom-5">
+          <ShieldAlert className="w-4 h-4 text-[#ff2a85]" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* 1. Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Daftar Pelanggan
           </h1>
           <p className="text-xs text-slate-400 font-medium mt-0.5">
-            Kelola seluruh data akun pelanggan aktif dan riwayat belanja Robux
+            Data pembeli yang otomatis diagregasi langsung dari transaksi real database
           </p>
         </div>
 
         <button
-          onClick={() => setCustomers([...customers])}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-pink-50 hover:bg-pink-100 text-[#ff2a85] font-extrabold text-xs border border-pink-200 shadow-xs transition-all cursor-pointer shrink-0"
+          onClick={() => {
+            fetchCustomers();
+            setToastMsg("Data pelanggan berhasil diperbarui!");
+            setTimeout(() => setToastMsg(null), 2500);
+          }}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-pink-50 hover:bg-pink-100 text-[#ff2a85] font-extrabold text-xs border border-pink-200 shadow-xs transition-all cursor-pointer self-start sm:self-auto shrink-0 active:scale-95"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh Data</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          <span>{loading ? "Memuat..." : "Refresh Data"}</span>
         </button>
       </div>
 
-      {/* 2. Search & Meta Bar (Matching Screenshot 7) */}
-      <div className="bg-white border border-pink-100 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari username atau email pelanggan..."
-            className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white text-xs font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400"
-          />
-        </div>
-
-        <div className="text-xs text-slate-500 font-bold self-end sm:self-center">
-          Menampilkan <span className="font-extrabold text-[#ff2a85]">{filteredCustomers.length}</span> pelanggan
-        </div>
-      </div>
-
-      {/* 3. Customer List or Empty State (Matching Screenshot 7) */}
-      {filteredCustomers.length === 0 ? (
-        <div className="bg-white border border-pink-100 rounded-3xl p-16 sm:p-24 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
-          <div className="w-14 h-14 rounded-full bg-pink-50 text-[#ff2a85] flex items-center justify-center border border-pink-100 shadow-xs">
-            <Users className="w-7 h-7 stroke-[1.8]" />
+      {/* 2. Main Customers Container (Matching BloxyLucy 1-Column List) */}
+      <div className="bg-white border border-pink-100 rounded-3xl p-5 sm:p-7 shadow-xs space-y-5">
+        {/* Search & Count Meta Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="relative w-full sm:w-96">
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari username, ID Roblox, atau WhatsApp..."
+              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-pink-50/20 border border-pink-200 focus:border-[#ff2a85] focus:bg-white text-xs font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400"
+            />
           </div>
-          <p className="font-extrabold text-sm sm:text-base text-slate-800">
-            Belum ada data pelanggan
-          </p>
+
+          <div className="text-xs text-slate-500 font-bold self-end sm:self-center">
+            Menampilkan{" "}
+            <span className="font-extrabold text-slate-900">
+              {filteredCustomers.length}
+            </span>{" "}
+            pelanggan
+          </div>
         </div>
-      ) : (
-        <div className="bg-white border border-pink-100 rounded-3xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-pink-50/50 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-pink-100">
-                  <th className="p-4">Pelanggan</th>
-                  <th className="p-4">No WhatsApp</th>
-                  <th className="p-4">Total Order</th>
-                  <th className="p-4">Total Belanja</th>
-                  <th className="p-4">Transaksi Terakhir</th>
-                  <th className="p-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-pink-50 text-xs font-semibold text-slate-700">
-                {filteredCustomers.map((cust) => (
-                  <tr key={cust.id} className="hover:bg-pink-50/20 transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-pink-100 border border-pink-200 flex items-center justify-center font-extrabold text-xs text-[#ff2a85] shrink-0">
-                          {cust.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 leading-tight">
-                            @{cust.username}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-medium">{cust.id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <a
-                        href={`https://wa.me/${cust.whatsapp.replace(/[^0-9]/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-emerald-600 hover:underline font-bold inline-flex items-center gap-1"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 fill-emerald-100" />
-                        <span>{cust.whatsapp}</span>
-                      </a>
-                    </td>
-                    <td className="p-4">
-                      <span className="px-2.5 py-1 rounded-full bg-pink-50 border border-pink-200 text-[#ff2a85] font-black text-xs">
-                        {cust.totalOrders} Transaksi
+
+        {/* Customer List Rows (1-Column Full Width) */}
+        {filteredCustomers.length === 0 ? (
+          <div className="py-16 sm:py-20 flex flex-col items-center justify-center text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-pink-50 text-[#ff2a85] flex items-center justify-center border border-pink-100 shadow-xs">
+              <Users className="w-7 h-7 stroke-[1.8]" />
+            </div>
+            <p className="font-extrabold text-sm sm:text-base text-slate-800">
+              Belum ada data pelanggan
+            </p>
+            <p className="text-xs text-slate-400">
+              Coba ubah kata kunci pencarian Anda
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-pink-100/60 border-t border-pink-100/60">
+            {filteredCustomers.map((cust) => {
+              const displayName =
+                cust.robloxDisplay && cust.robloxDisplay !== cust.username
+                  ? `@${cust.username} (@${cust.robloxDisplay})`
+                  : `@${cust.username}`;
+
+              const isBlacklisted = cust.status === "BLACKLIST";
+
+              return (
+                <div
+                  key={cust.id}
+                  className="py-4 sm:py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors hover:bg-pink-50/10 px-2 sm:px-3 rounded-2xl"
+                >
+                  {/* Left Column: Customer Username & Meta */}
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-black text-sm sm:text-base text-[#ff2a85] font-mono tracking-tight">
+                        {displayName}
                       </span>
-                    </td>
-                    <td className="p-4 font-black text-slate-900">
-                      {formatRupiah(cust.totalSpent)}
-                    </td>
-                    <td className="p-4 text-slate-500 font-medium">{cust.lastOrderDate}</td>
-                    <td className="p-4 text-center">
-                      <a
-                        href={`https://wa.me/${cust.whatsapp.replace(/[^0-9]/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-all shadow-xs"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 fill-emerald-100" />
-                        <span>Chat WA</span>
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {isBlacklisted ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-black tracking-wide shrink-0">
+                          <ShieldAlert className="w-3 h-3" />
+                          BLACKLIST
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[10px] font-black tracking-wide shrink-0">
+                          <UserCheck className="w-3 h-3" />
+                          AKTIF
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium">
+                      <span>ID: {cust.robloxUserId || "-"}</span>
+                      <span className="text-slate-300">•</span>
+                      <span>WA: {cust.whatsapp}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-400">Order terakhir: {cust.lastOrderDate || "Hari ini"}</span>
+                    </div>
+                  </div>
+
+                  {/* Middle & Right: Spent & Action Button */}
+                  <div className="flex items-center justify-between lg:justify-end gap-6 sm:gap-8 shrink-0">
+                    <div className="text-left lg:text-right space-y-0.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                        {cust.totalOrders}x order
+                      </p>
+                      <p className="text-sm sm:text-base font-black text-slate-900 leading-tight">
+                        {formatRupiah(cust.totalSpent)}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleBlacklist(cust)}
+                      className={`flex items-center gap-1.5 px-4 sm:px-5 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer active:scale-95 shrink-0 ${
+                        isBlacklisted
+                          ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 shadow-xs"
+                          : "bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 shadow-xs"
+                      }`}
+                    >
+                      {isBlacklisted ? (
+                        <>
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Batal Blacklist</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          <span>Blacklist</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
+

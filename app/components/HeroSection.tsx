@@ -7,47 +7,83 @@ import { Zap, ArrowRight, Clock } from "lucide-react";
 interface HeroSectionProps {
   onSelectPromo: () => void;
   onOpenTestimonial: () => void;
+  promoActive?: boolean;
+  promoTitle?: string;
+  promoSubtitle?: string;
+  bannerImageUrl?: string;
+  promoRobuxAmount?: number;
+  promoDiscountPrice?: number;
+  promoOriginalLabel?: string;
+  promoEndDate?: string;
+  logoImageUrl?: string;
 }
 
 export default function HeroSection({
   onSelectPromo,
   onOpenTestimonial,
+  promoActive = true,
+  promoTitle = "⚡ PROMO FLASH SALE ROBUX HARI INI!",
+  promoSubtitle = "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+  bannerImageUrl,
+  promoRobuxAmount = 2200,
+  promoDiscountPrice = 45000,
+  promoOriginalLabel = "2.000 Robux",
+  promoEndDate,
+  logoImageUrl = "/logo.png",
 }: HeroSectionProps) {
   const [timeLeft, setTimeLeft] = useState({
-    days: 26,
-    hours: 14,
-    minutes: 49,
-    seconds: 16,
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        } else if (prev.days > 0) {
-          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
+    const updateCountdown = () => {
+      const targetTime = promoEndDate
+        ? new Date(promoEndDate).getTime()
+        : Date.now() + 1000 * 60 * 60 * 24 * 3; // fallback 3 days
 
+      const now = Date.now();
+      const diff = Math.max(0, targetTime - now);
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      setTimeLeft({ days, hours, minutes, seconds });
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [promoEndDate]);
 
   const format2Digits = (num: number) => String(num).padStart(2, "0");
+  const formatRobux = (num: number) => new Intl.NumberFormat("id-ID").format(num);
+  const formatRupiah = (num: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(num);
+
+  if (!promoActive) return null;
 
   return (
     <section className="relative z-10 max-w-[1400px] w-full mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-2 sm:pb-3">
       <div className="relative overflow-hidden rounded-3xl bg-white border border-pink-100 p-4 sm:p-8 lg:p-10 shadow-[0_10px_35px_-10px_rgba(255,42,133,0.07)]">
-        {/* Soft subtle glow */}
-        <div className="absolute top-0 right-1/4 w-80 h-80 bg-pink-200/20 rounded-full blur-3xl pointer-events-none" />
+        {/* Soft subtle glow or custom banner background */}
+        {bannerImageUrl ? (
+          <div className="absolute inset-0 z-0 opacity-15 pointer-events-none">
+            <img src={bannerImageUrl} alt="Banner Promo" className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="absolute top-0 right-1/4 w-80 h-80 bg-pink-200/20 rounded-full blur-3xl pointer-events-none" />
+        )}
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 sm:gap-8">
+        <div className="relative z-1 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 sm:gap-8">
           {/* Left Column */}
           <div className="space-y-3.5 sm:space-y-4 max-w-2xl">
             {/* Promo Badges */}
@@ -63,10 +99,10 @@ export default function HeroSection({
             {/* Main Headline */}
             <div>
               <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 leading-tight">
-                ROBUX BULAN <span className="text-[#ff2a85]">INI</span>
+                {promoTitle}
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-                Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!
+                {promoSubtitle}
               </p>
             </div>
 
@@ -74,7 +110,7 @@ export default function HeroSection({
             <div className="pt-0.5">
               <div className="flex items-baseline gap-1.5 sm:gap-2">
                 <span className="text-xl sm:text-3xl font-black text-slate-900">
-                  2.200
+                  {formatRobux(promoRobuxAmount)}
                 </span>
                 <span className="text-[11px] sm:text-xs font-bold text-slate-500 tracking-wider">
                   ROBUX
@@ -82,11 +118,13 @@ export default function HeroSection({
               </div>
 
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs sm:text-sm text-slate-400 line-through font-semibold">
-                  2.000 Robux
-                </span>
+                {promoOriginalLabel && (
+                  <span className="text-xs sm:text-sm text-slate-400 line-through font-semibold">
+                    {promoOriginalLabel}
+                  </span>
+                )}
                 <span className="text-lg sm:text-2xl lg:text-3xl font-black text-[#ff2a85] tracking-tight">
-                  Rp 45.000
+                  {formatRupiah(promoDiscountPrice)}
                 </span>
               </div>
             </div>
@@ -163,7 +201,7 @@ export default function HeroSection({
               <div className="flex items-center gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-xl bg-pink-50/50 border border-pink-100">
                 <div className="relative w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg overflow-hidden border border-pink-200">
                   <Image
-                    src="/logo.png"
+                    src={logoImageUrl || "/logo.png"}
                     alt="Garansi"
                     fill
                     className="object-contain"

@@ -23,6 +23,7 @@ import {
   MessageCircle,
   LogOut,
   Tag,
+  X,
 } from "lucide-react";
 import { AdminTab } from "../types";
 
@@ -31,17 +32,25 @@ interface AdminSidebarProps {
   setActiveTab: (tab: AdminTab) => void;
   pendingCount?: number;
   processingCount?: number;
+  completedCount?: number;
+  cancelledCount?: number;
   isStoreOpen: boolean;
   setIsStoreOpen: (open: boolean) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function AdminSidebar({
   activeTab,
   setActiveTab,
-  pendingCount = 68,
-  processingCount = 32,
+  pendingCount = 0,
+  processingCount = 0,
+  completedCount = 0,
+  cancelledCount = 0,
   isStoreOpen,
   setIsStoreOpen,
+  isOpen = false,
+  onClose,
 }: AdminSidebarProps) {
   const router = useRouter();
 
@@ -52,65 +61,57 @@ export default function AdminSidebar({
     router.push("/admin/login");
   };
 
-  return (
-    <aside className="w-full lg:w-64 bg-white border-r border-pink-100 flex flex-col justify-between shrink-0 shadow-xs lg:h-screen lg:sticky lg:top-0">
-      {/* 1. FIXED TOP HEADER */}
-      <div className="shrink-0">
-        {/* Brand Header */}
-        <div className="p-4 sm:p-5 border-b border-pink-100 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
-              <Image
-                src="/logo.png"
-                alt="official.mriyy logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-            <div>
-              <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none block">
-                official<span className="text-[#ff2a85]">.mriyy</span>
-              </span>
-              <span className="text-[10px] font-bold text-[#ff2a85] tracking-wider uppercase inline-flex items-center gap-1 mt-0.5">
-                <ShieldCheck className="w-2.5 h-2.5" />
-                TOP UP ROBUX
-              </span>
-            </div>
-          </Link>
-        </div>
+  const handleTabClick = (tab: AdminTab) => {
+    setActiveTab(tab);
+    if (onClose) {
+      onClose();
+    }
+  };
 
-        {/* Store Status Toggle */}
-        <div className="p-3 mx-3 my-2.5 rounded-2xl bg-pink-50/50 border border-pink-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${isStoreOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-            <div>
-              <p className="text-xs font-bold text-slate-800">Status Toko</p>
-              <p className="text-[10px] text-slate-500 font-medium">
-                {isStoreOpen ? "Menerima Pesanan" : "Toko Tutup"}
-              </p>
-            </div>
+  const SidebarContent = () => (
+    <>
+      {/* 1. FIXED TOP HEADER */}
+      <div className="shrink-0 p-4 sm:p-5 border-b border-pink-100 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5 group" onClick={() => onClose?.()}>
+          <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
+            <Image
+              src="/logo.png"
+              alt="official.mriyy logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
+          <div>
+            <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none block">
+              official<span className="text-[#ff2a85]">.mriyy</span>
+            </span>
+            <span className="text-[10px] font-bold text-[#ff2a85] tracking-wider uppercase inline-flex items-center gap-1 mt-0.5">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              TOP UP ROBUX
+            </span>
+          </div>
+        </Link>
+
+        {/* Mobile Close Button */}
+        {onClose && (
           <button
-            onClick={() => setIsStoreOpen(!isStoreOpen)}
-            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-              isStoreOpen
-                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                : "bg-rose-100 text-rose-700 hover:bg-rose-200"
-            }`}
-            title="Toggle Status Toko"
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-full bg-pink-50 hover:bg-pink-100 text-[#ff2a85] transition-colors cursor-pointer"
+            title="Tutup Menu"
+            aria-label="Tutup Menu"
           >
-            <Power className="w-3.5 h-3.5" />
+            <X className="w-5 h-5" />
           </button>
-        </div>
+        )}
       </div>
 
-      {/* 2. SCROLLABLE MIDDLE NAVIGATION AREA (Separate Scrollbar) */}
+      {/* 2. SCROLLABLE MIDDLE NAVIGATION AREA */}
       <nav className="flex-1 overflow-y-auto sidebar-scrollbar px-3 py-2 space-y-4 min-h-0">
         {/* Main Dashboard */}
         <div>
           <button
-            onClick={() => setActiveTab("overview")}
+            onClick={() => handleTabClick("overview")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "overview"
                 ? "bg-pink-100/80 text-[#ff2a85] shadow-xs"
@@ -129,7 +130,7 @@ export default function AdminSidebar({
           </p>
 
           <button
-            onClick={() => setActiveTab("order_masuk")}
+            onClick={() => handleTabClick("order_masuk")}
             className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "order_masuk"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -146,7 +147,7 @@ export default function AdminSidebar({
           </button>
 
           <button
-            onClick={() => setActiveTab("order_diproses")}
+            onClick={() => handleTabClick("order_diproses")}
             className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "order_diproses"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -163,7 +164,7 @@ export default function AdminSidebar({
           </button>
 
           <button
-            onClick={() => setActiveTab("order_selesai")}
+            onClick={() => handleTabClick("order_selesai")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "order_selesai"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -175,7 +176,7 @@ export default function AdminSidebar({
           </button>
 
           <button
-            onClick={() => setActiveTab("order_dibatalkan")}
+            onClick={() => handleTabClick("order_dibatalkan")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "order_dibatalkan"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -194,7 +195,7 @@ export default function AdminSidebar({
           </p>
 
           <button
-            onClick={() => setActiveTab("products")}
+            onClick={() => handleTabClick("products")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "products"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -213,7 +214,7 @@ export default function AdminSidebar({
           </p>
 
           <button
-            onClick={() => setActiveTab("pelanggan")}
+            onClick={() => handleTabClick("pelanggan")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "pelanggan"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -225,7 +226,7 @@ export default function AdminSidebar({
           </button>
 
           <button
-            onClick={() => setActiveTab("blacklist")}
+            onClick={() => handleTabClick("blacklist")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "blacklist"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -244,7 +245,7 @@ export default function AdminSidebar({
           </p>
 
           <button
-            onClick={() => setActiveTab("testimoni")}
+            onClick={() => handleTabClick("testimoni")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "testimoni"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -263,7 +264,7 @@ export default function AdminSidebar({
           </p>
 
           <button
-            onClick={() => setActiveTab("keuangan")}
+            onClick={() => handleTabClick("keuangan")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "keuangan"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -282,19 +283,7 @@ export default function AdminSidebar({
           </p>
 
           <button
-            onClick={() => setActiveTab("payments")}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
-              activeTab === "payments"
-                ? "bg-pink-100/80 text-[#ff2a85]"
-                : "text-slate-600 hover:bg-pink-50/70 hover:text-[#ff2a85]"
-            }`}
-          >
-            <CreditCard className="w-4 h-4 text-slate-400" />
-            <span>Metode Pembayaran</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("settings")}
+            onClick={() => handleTabClick("settings")}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-2xl font-bold text-xs transition-all cursor-pointer ${
               activeTab === "settings"
                 ? "bg-pink-100/80 text-[#ff2a85]"
@@ -309,7 +298,7 @@ export default function AdminSidebar({
 
       {/* 3. FIXED BOTTOM FOOTER AREA */}
       <div className="shrink-0 p-3 border-t border-pink-100 space-y-2 bg-white">
-        {/* Support Help Card (Matching Reference Screenshot) */}
+        {/* Support Help Card */}
         <div className="p-3 rounded-2xl bg-pink-50/70 border border-pink-100 text-center space-y-2">
           <p className="text-xs font-black text-[#ff2a85]">Butuh Bantuan?</p>
           <p className="text-[10px] text-slate-500 font-medium leading-tight">
@@ -346,6 +335,31 @@ export default function AdminSidebar({
           </button>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sticky Sidebar (Visible only on lg and above) */}
+      <aside className="hidden lg:flex lg:w-64 bg-white border-r border-pink-100 flex-col justify-between shrink-0 shadow-xs lg:h-screen lg:sticky lg:top-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Slide-Over Drawer (Visible only on mobile/tablet when open) */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop Blur Overlay */}
+          <div
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+          />
+
+          {/* Drawer Panel */}
+          <div className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white border-r border-pink-100 flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-200">
+            <SidebarContent />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   User,
@@ -27,35 +27,64 @@ export interface RobuxPackage {
   originalPrice?: number;
   tag?: "PROMO" | "POPULER" | "SULTAN";
   category: "populer" | "promo" | "sultan" | "reguler";
+  inStock?: boolean;
 }
 
 export const ROBUX_PACKAGES: RobuxPackage[] = [
-  { id: 1, amount: 1800, price: 35000, tag: "POPULER", category: "populer" },
+  {
+    id: 1,
+    amount: 1800,
+    price: 35000,
+    category: "populer",
+    tag: "POPULER",
+    inStock: true,
+  },
   {
     id: 2,
     amount: 2200,
     price: 45000,
     originalPrice: 52000,
-    tag: "PROMO",
     category: "promo",
+    tag: "PROMO",
+    inStock: true,
   },
-  { id: 3, amount: 2700, price: 50000, category: "reguler" },
-  { id: 4, amount: 3200, price: 60000, category: "reguler" },
-  { id: 5, amount: 3700, price: 70000, category: "reguler" },
-  { id: 6, amount: 4200, price: 80000, tag: "POPULER", category: "populer" },
-  { id: 7, amount: 4700, price: 90000, category: "reguler" },
   {
-    id: 8,
-    amount: 5500,
-    price: 100000,
-    originalPrice: 115000,
-    tag: "PROMO",
-    category: "promo",
+    id: 3,
+    amount: 3700,
+    price: 70000,
+    category: "reguler",
+    inStock: true,
   },
-  { id: 9, amount: 7000, price: 135000, tag: "SULTAN", category: "sultan" },
-  { id: 10, amount: 10000, price: 190000, tag: "SULTAN", category: "sultan" },
-  { id: 11, amount: 15000, price: 280000, tag: "SULTAN", category: "sultan" },
-  { id: 12, amount: 25000, price: 450000, tag: "SULTAN", category: "sultan" },
+  {
+    id: 4,
+    amount: 4200,
+    price: 80000,
+    category: "reguler",
+    inStock: true,
+  },
+  {
+    id: 5,
+    amount: 10000,
+    price: 185000,
+    category: "reguler",
+    inStock: true,
+  },
+  {
+    id: 6,
+    amount: 25000,
+    price: 450000,
+    category: "sultan",
+    tag: "SULTAN",
+    inStock: true,
+  },
+  {
+    id: 7,
+    amount: 33000,
+    price: 675000,
+    category: "sultan",
+    tag: "SULTAN",
+    inStock: true,
+  },
 ];
 
 export type PaymentMethod = "website" | "whatsapp";
@@ -65,11 +94,12 @@ interface OrderSectionProps {
   setUsername: (val: string) => void;
   whatsappNumber: string;
   setWhatsappNumber: (val: string) => void;
-  selectedPackage: RobuxPackage;
+  selectedPackage?: RobuxPackage | null;
   setSelectedPackage: (pkg: RobuxPackage) => void;
   paymentMethod: PaymentMethod;
   setPaymentMethod: (method: PaymentMethod) => void;
   onAddToCart: (pkg: RobuxPackage) => void;
+  packages?: RobuxPackage[];
 }
 
 export default function OrderSection({
@@ -82,14 +112,29 @@ export default function OrderSection({
   paymentMethod,
   setPaymentMethod,
   onAddToCart,
+  packages: initialPackages,
 }: OrderSectionProps) {
+  const [packages, setPackages] = useState<RobuxPackage[]>(initialPackages || []);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(!initialPackages?.length);
   const [activeTab, setActiveTab] = useState<"all" | "populer" | "promo" | "sultan">("all");
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
   const [accountChecked, setAccountChecked] = useState(false);
+  const [accountCheckError, setAccountCheckError] = useState<string | null>(null);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (initialPackages && initialPackages.length > 0) {
+      setPackages(initialPackages);
+      setIsLoadingPackages(false);
+    } else if (initialPackages && initialPackages.length === 0) {
+      // Still waiting for parent page.tsx to finish initial fetch
+      setIsLoadingPackages(true);
+    }
+  }, [initialPackages]);
+
   // Filter packages based on tab
-  const filteredPackages = ROBUX_PACKAGES.filter((item) => {
+  const filteredPackages = packages.filter((item) => {
     if (activeTab === "all") return true;
     if (activeTab === "populer") return item.category === "populer" || item.tag === "POPULER";
     if (activeTab === "promo") return item.category === "promo" || item.tag === "PROMO";
@@ -97,22 +142,35 @@ export default function OrderSection({
     return true;
   });
 
-  const countPromo = ROBUX_PACKAGES.filter((p) => p.category === "promo" || p.tag === "PROMO").length;
-  const countPopuler = ROBUX_PACKAGES.filter((p) => p.category === "populer" || p.tag === "POPULER").length;
-  const countSultan = ROBUX_PACKAGES.filter((p) => p.category === "sultan" || p.tag === "SULTAN").length;
+  const countPromo = packages.filter((p) => p.category === "promo" || p.tag === "PROMO").length;
+  const countPopuler = packages.filter((p) => p.category === "populer" || p.tag === "POPULER").length;
+  const countSultan = packages.filter((p) => p.category === "sultan" || p.tag === "SULTAN").length;
 
   const handleCheckAccount = async () => {
     if (!username.trim()) return;
     setIsCheckingAccount(true);
     setAccountChecked(false);
+    setAccountCheckError(null);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/roblox-user?username=${encodeURIComponent(username.trim())}`);
+      const data = await res.json();
+
+      if (res.ok && data.success && data.user) {
+        setAccountChecked(true);
+        setAvatarUrl(data.user.avatarUrl || "");
+        setUserDisplayName(data.user.displayName || data.user.name);
+        setUsername(data.user.name);
+      } else {
+        setAccountCheckError(data.error || `Akun Roblox "${username}" tidak ditemukan.`);
+        setAvatarUrl(null);
+        setUserDisplayName(null);
+      }
+    } catch {
+      setAccountCheckError("Gagal memeriksa akun Roblox. Silakan coba sesaat lagi.");
+    } finally {
       setIsCheckingAccount(false);
-      setAccountChecked(true);
-      setAvatarUrl(
-        `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username.trim())}&backgroundColor=ffd5dc,ffb3c6,ffdfba`
-      );
-    }, 600);
+    }
   };
 
   const formatRupiah = (num: number) => {
@@ -152,17 +210,19 @@ export default function OrderSection({
         <div className="space-y-3">
           <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
             <User className="w-3.5 h-3.5 text-[#ff2a85]" />
-            <span>Username Roblox</span>
+            <span>Username Roblox <span className="text-rose-500">*</span></span>
           </label>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5">
             <div className="relative flex-1">
               <input
+                id="input-roblox-username"
                 type="text"
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value);
                   setAccountChecked(false);
+                  setAccountCheckError(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -195,25 +255,40 @@ export default function OrderSection({
 
           {/* Account Verified Indicator */}
           {accountChecked && username.trim() && (
-            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 animate-in fade-in duration-200">
-              {avatarUrl && (
-                <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-emerald-300 shadow-xs relative shrink-0">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 animate-in fade-in duration-200">
+              {avatarUrl ? (
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-white border-2 border-emerald-300 shadow-sm relative shrink-0">
                   <img
                     src={avatarUrl}
                     alt={username}
                     className="w-full h-full object-cover"
                   />
                 </div>
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-emerald-200 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                  RBX
+                </div>
               )}
               <div className="text-xs">
-                <div className="flex items-center gap-1 font-bold">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Akun Ditemukan: {username}</span>
+                <div className="flex items-center gap-1.5 font-black text-slate-900">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{username}</span>
+                  {userDisplayName && userDisplayName !== username && (
+                    <span className="text-slate-500 font-semibold text-[11px]">({userDisplayName})</span>
+                  )}
                 </div>
-                <p className="text-emerald-700 text-[10px] font-medium">
-                  Robux siap dikirimkan otomatis ke akun ini setelah pembayaran.
+                <p className="text-emerald-700 text-[11px] font-medium mt-0.5">
+                  Akun Roblox Resmi Terverifikasi. Robux siap dikirimkan otomatis ke akun ini.
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Account Error Message */}
+          {accountCheckError && (
+            <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-in fade-in duration-200">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{accountCheckError}</span>
             </div>
           )}
 
@@ -221,11 +296,12 @@ export default function OrderSection({
           <div className="space-y-1.5 pt-1">
             <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 flex-wrap">
               <Phone className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Nomor WhatsApp</span>
+              <span>Nomor WhatsApp <span className="text-rose-500">*</span></span>
               <span className="text-[10px] text-pink-600 font-semibold">(Untuk Notifikasi & Bukti)</span>
             </label>
 
             <input
+              id="input-whatsapp-number"
               type="tel"
               value={whatsappNumber}
               onChange={(e) => setWhatsappNumber(e.target.value)}
@@ -267,7 +343,7 @@ export default function OrderSection({
             </div>
           </div>
 
-          {/* Filter Pills with smooth horizontal scrolling on mobile */}
+          {/* Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar sm:flex-wrap">
             <button
               onClick={() => setActiveTab("all")}
@@ -278,7 +354,7 @@ export default function OrderSection({
               }`}
             >
               <Layers className="w-3 h-3" />
-              <span>Semua ({ROBUX_PACKAGES.length})</span>
+              <span>Semua ({packages.length})</span>
             </button>
 
             <button
@@ -320,103 +396,110 @@ export default function OrderSection({
         </div>
 
         {/* Packages Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-          {filteredPackages.map((pkg) => {
-            const isSelected = selectedPackage.id === pkg.id;
+        {isLoadingPackages ? (
+          <div className="py-12 flex flex-col items-center justify-center space-y-3 text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin text-[#ff2a85]" />
+            <p className="text-xs font-bold">Memuat daftar harga Robux...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+            {filteredPackages.map((pkg) => {
+              const isSelected = selectedPackage?.id === pkg.id;
 
-            return (
-              <div
-                key={pkg.id}
-                onClick={() => setSelectedPackage(pkg)}
-                className={`relative rounded-2xl p-3 sm:p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between select-none ${
-                  isSelected
-                    ? "bg-white border-2 border-[#ff2a85] shadow-[0_4px_15px_-3px_rgba(255,42,133,0.25)]"
-                    : "bg-white border border-pink-100 hover:border-pink-300 hover:bg-pink-50/20"
-                }`}
-              >
-                {/* Top Badge (if any) & Selection Indicator */}
-                <div className="flex items-center justify-between mb-1.5 sm:mb-2 min-h-[20px]">
-                  {pkg.tag === "PROMO" && (
-                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ff2a85] text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
-                      PROMO
-                    </span>
-                  )}
-                  {pkg.tag === "POPULER" && (
-                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
-                      POPULER
-                    </span>
-                  )}
-                  {pkg.tag === "SULTAN" && (
-                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-purple-600 text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
-                      SULTAN
-                    </span>
-                  )}
-                  {!pkg.tag && <span />}
-
-                  <button
-                    type="button"
-                    title="Tambah ke Keranjang"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddToCart(pkg);
-                    }}
-                    className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 ${
-                      isSelected
-                        ? "bg-[#ff2a85] text-white hover:bg-[#e60067]"
-                        : "bg-pink-50 hover:bg-[#ff2a85] text-[#ff2a85] hover:text-white border border-pink-200/60"
-                    }`}
-                  >
-                    <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
-                  </button>
-                </div>
-
-                {/* Robux Coin Icon & Amount */}
-                <div className="flex items-center gap-2 sm:gap-3 my-1">
-                  <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
-                    <Image
-                      src="/robux.webp"
-                      alt="Robux"
-                      fill
-                      className="object-contain drop-shadow-xs"
-                    />
-                  </div>
-                  <div className="overflow-hidden">
-                    <div className="font-extrabold text-xs sm:text-base text-slate-900 leading-tight truncate">
-                      {formatRobux(pkg.amount)}{" "}
-                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">
-                        Robux
+              return (
+                <div
+                  key={pkg.id}
+                  onClick={() => setSelectedPackage(pkg)}
+                  className={`relative rounded-2xl p-3 sm:p-4 transition-all duration-150 cursor-pointer flex flex-col justify-between select-none ${
+                    isSelected
+                      ? "bg-white border-2 border-[#ff2a85] shadow-[0_4px_15px_-3px_rgba(255,42,133,0.25)]"
+                      : "bg-white border border-pink-100 hover:border-pink-300 hover:bg-pink-50/20"
+                  }`}
+                >
+                  {/* Top Badge (if any) & Selection Indicator */}
+                  <div className="flex items-center justify-between mb-1.5 sm:mb-2 min-h-[20px]">
+                    {pkg.tag === "PROMO" && (
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ff2a85] text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
+                        PROMO
                       </span>
-                    </div>
-                    {pkg.originalPrice && (
-                      <div className="text-[8px] sm:text-[9px] text-slate-400 line-through font-semibold truncate">
-                        {formatRupiah(pkg.originalPrice)}
-                      </div>
                     )}
-                    <div className="font-black text-xs sm:text-sm text-[#ff2a85] truncate">
-                      {formatRupiah(pkg.price)}
+                    {pkg.tag === "POPULER" && (
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
+                        POPULER
+                      </span>
+                    )}
+                    {pkg.tag === "SULTAN" && (
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-purple-600 text-white text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-xs">
+                        SULTAN
+                      </span>
+                    )}
+                    {!pkg.tag && <span />}
+
+                    <button
+                      type="button"
+                      title="Tambah ke Keranjang"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToCart(pkg);
+                      }}
+                      className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 ${
+                        isSelected
+                          ? "bg-[#ff2a85] text-white hover:bg-[#e60067]"
+                          : "bg-pink-50 hover:bg-[#ff2a85] text-[#ff2a85] hover:text-white border border-pink-200/60"
+                      }`}
+                    >
+                      <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
+                    </button>
+                  </div>
+
+                  {/* Robux Coin Icon & Amount */}
+                  <div className="flex items-center gap-2 sm:gap-3 my-1">
+                    <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
+                      <Image
+                        src="/robux.webp"
+                        alt="Robux"
+                        fill
+                        className="object-contain drop-shadow-xs"
+                      />
+                    </div>
+                    <div className="overflow-hidden">
+                      <div className="font-extrabold text-xs sm:text-base text-slate-900 leading-tight truncate">
+                        {formatRobux(pkg.amount)}{" "}
+                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">
+                          Robux
+                        </span>
+                      </div>
+                      {pkg.originalPrice && (
+                        <div className="text-[8px] sm:text-[9px] text-slate-400 line-through font-semibold truncate">
+                          {formatRupiah(pkg.originalPrice)}
+                        </div>
+                      )}
+                      <div className="font-black text-xs sm:text-sm text-[#ff2a85] truncate">
+                        {formatRupiah(pkg.price)}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Card Footer: INSTAN & Status */}
-                <div className="mt-2 pt-2 border-t border-pink-50 flex items-center justify-between text-[9px] sm:text-[10px]">
-                  <span className="inline-flex items-center gap-0.5 font-bold text-emerald-600 uppercase tracking-wider">
-                    <Zap className="w-2.5 h-2.5 fill-emerald-500" />
-                    <span>INSTAN</span>
-                  </span>
+                  {/* Card Footer: INSTAN & Status */}
+                  <div className="mt-2 pt-2 border-t border-pink-50 flex items-center justify-between text-[9px] sm:text-[10px]">
+                    <span className="inline-flex items-center gap-0.5 font-bold text-emerald-600 uppercase tracking-wider">
+                      <Zap className="w-2.5 h-2.5 fill-emerald-500" />
+                      <span>INSTAN</span>
+                    </span>
 
-                  <span
-                    className={`font-semibold ${
-                      isSelected ? "text-[#ff2a85]" : "text-slate-400"
-                    }`}
-                  >
-                    {isSelected ? "Dipilih" : "Pilih"}
-                  </span>
+                    <span
+                      className={`font-semibold ${
+                        isSelected ? "text-[#ff2a85]" : "text-slate-400"
+                      }`}
+                    >
+                      {isSelected ? "Dipilih" : "Pilih"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

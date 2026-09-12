@@ -22,20 +22,9 @@ export interface BlacklistItem {
   createdAt: string;
 }
 
-const MOCK_BLACKLIST: BlacklistItem[] = [
-  {
-    id: "BLK-001",
-    username: "Perusuh",
-    whatsapp: "08123456789",
-    reason: "Indikasi Bukti Palsu",
-    totalOrders: 0,
-    totalSpent: 0,
-    createdAt: "9 Sep 2026",
-  },
-];
-
 export default function BlacklistTab() {
-  const [blacklist, setBlacklist] = useState<BlacklistItem[]>(MOCK_BLACKLIST);
+  const [blacklist, setBlacklist] = useState<BlacklistItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -44,31 +33,93 @@ export default function BlacklistTab() {
   const [formWhatsapp, setFormWhatsapp] = useState("");
   const [formReason, setFormReason] = useState("");
 
+  const fetchBlacklists = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/blacklists");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blacklists && Array.isArray(data.blacklists)) {
+          const mapped: BlacklistItem[] = data.blacklists.map((b: any) => ({
+            id: `BLK-${String(b.id).padStart(3, "0")}`,
+            username: b.roblox_username,
+            whatsapp: b.phone || "Belum terdata",
+            reason: b.reason || "Indikasi Penipuan",
+            totalOrders: 0,
+            totalSpent: 0,
+            createdAt: b.created_at ? new Date(b.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
+          }));
+          setBlacklist(mapped);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching blacklists:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchBlacklists();
+  }, []);
+
   const filteredBlacklist = blacklist.filter(
     (b) =>
       b.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.whatsapp.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleUnblock = (id: string) => {
-    setBlacklist((prev) => prev.filter((item) => item.id !== id));
+  const handleUnblock = async (item: BlacklistItem) => {
+    if (!confirm(`Buka blokir untuk akun @${item.username}?`)) return;
+
+    setBlacklist((prev) => prev.filter((b) => b.id !== item.id));
+
+    try {
+      await fetch(`/api/blacklists?username=${encodeURIComponent(item.username)}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Error removing from blacklist:", err);
+      fetchBlacklists();
+    }
   };
 
-  const handleAddBlacklist = (e: React.FormEvent) => {
+  const handleAddBlacklist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formUsername.trim()) return;
 
-    const newItem: BlacklistItem = {
-      id: `BLK-${Date.now().toString().slice(-3)}`,
-      username: formUsername.trim(),
-      whatsapp: formWhatsapp.trim() || "Belum terdata",
-      reason: formReason.trim() || "Indikasi Penipuan",
-      totalOrders: 0,
-      totalSpent: 0,
-      createdAt: "Hari ini",
-    };
+    const rawUser = formUsername.replace(/^@/, "").trim();
+    const reason = formReason.trim() || "Indikasi Penipuan atau Penyalahgunaan";
+    const phone = formWhatsapp.trim() || null;
 
-    setBlacklist((prev) => [newItem, ...prev]);
+    try {
+      const res = await fetch("/api/blacklists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roblox_username: rawUser,
+          reason,
+          phone,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const newItem: BlacklistItem = {
+          id: `BLK-${String(data.blacklist?.id || Date.now()).slice(-3)}`,
+          username: rawUser,
+          whatsapp: phone || "Belum terdata",
+          reason,
+          totalOrders: 0,
+          totalSpent: 0,
+          createdAt: "Hari ini",
+        };
+        setBlacklist((prev) => [newItem, ...prev]);
+      }
+    } catch (err) {
+      console.error("Error adding blacklist:", err);
+    }
+
     setFormUsername("");
     setFormWhatsapp("");
     setFormReason("");
@@ -106,37 +157,39 @@ export default function BlacklistTab() {
           </button>
 
           <button
-            onClick={() => setBlacklist([...blacklist])}
+            onClick={fetchBlacklists}
+            disabled={loading}
             className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-pink-50 hover:bg-pink-100 text-[#ff2a85] font-extrabold text-xs border border-pink-200 shadow-xs transition-all cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Refresh Data</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>{loading ? "Memuat..." : "Refresh Data"}</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Search & Meta Bar (Matching Screenshot 8) */}
-      <div className="bg-white border border-pink-100 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari akun blacklist..."
-            className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white text-xs font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400"
-          />
+      {/* 2. Main Blacklist Container (Matching BloxyLucy 1-Column List) */}
+      <div className="bg-white border border-pink-100 rounded-3xl p-5 sm:p-7 shadow-xs space-y-5">
+        {/* Search & Meta Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="relative w-full sm:w-96">
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari akun blacklist..."
+              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-pink-50/20 border border-pink-200 focus:border-[#ff2a85] focus:bg-white text-xs font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          <div className="text-xs text-slate-500 font-bold self-end sm:self-center">
+            Menampilkan <span className="font-extrabold text-slate-900">{filteredBlacklist.length}</span> akun blacklist
+          </div>
         </div>
 
-        <div className="text-xs text-slate-500 font-bold self-end sm:self-center">
-          Menampilkan <span className="font-extrabold text-[#ff2a85]">{filteredBlacklist.length}</span> akun blacklist
-        </div>
-      </div>
-
-      {/* 3. Blacklist List Items (Matching Screenshot 8 Layout) */}
-      <div className="space-y-3">
+        {/* Blacklist List Items (1-Column Full Width Rows) */}
         {filteredBlacklist.length === 0 ? (
-          <div className="bg-white border border-pink-100 rounded-3xl p-16 sm:p-20 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
+          <div className="py-16 sm:py-20 flex flex-col items-center justify-center text-center space-y-3">
             <div className="w-14 h-14 rounded-full bg-pink-50 text-[#ff2a85] flex items-center justify-center border border-pink-100 shadow-xs">
               <ShieldAlert className="w-7 h-7 stroke-[1.8]" />
             </div>
@@ -145,48 +198,60 @@ export default function BlacklistTab() {
             </p>
           </div>
         ) : (
-          filteredBlacklist.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white border border-pink-100 hover:border-pink-300 rounded-3xl p-4 sm:p-5 shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              {/* Left Info Column */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-extrabold text-sm text-slate-900 line-through text-rose-600">
-                    @{item.username}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-pink-100 text-[#ff2a85] text-[10px] font-black uppercase tracking-wider">
-                    BLACKLISTED
-                  </span>
+          <div className="divide-y divide-pink-100/60 border-t border-pink-100/60">
+            {filteredBlacklist.map((item) => (
+              <div
+                key={item.id}
+                className="py-4 sm:py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors hover:bg-pink-50/10 px-2 sm:px-3 rounded-2xl"
+              >
+                {/* Left Column: Username & Reason */}
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="font-extrabold text-sm sm:text-base text-rose-600 line-through tracking-tight font-mono">
+                      @{item.username}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-black uppercase tracking-wider shrink-0">
+                      BLACKLISTED
+                    </span>
+                  </div>
+
+                  <div className="text-xs font-semibold text-slate-500 flex items-center gap-2 flex-wrap">
+                    <span>ID: <span className="text-slate-700">{item.id}</span></span>
+                    <span className="text-slate-300">•</span>
+                    <span>WA: <span className="text-emerald-600 font-bold">{item.whatsapp}</span></span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-400">Ditambahkan: {item.createdAt}</span>
+                  </div>
+
+                  {item.reason && (
+                    <p className="text-xs text-rose-500 font-medium">
+                      Alasan: <span className="text-slate-700">{item.reason}</span>
+                    </p>
+                  )}
                 </div>
 
-                <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 flex-wrap">
-                  <span>ID: <span className="text-slate-700">{item.id}</span></span>
-                  <span>•</span>
-                  <span>WA:</span>
-                  <span className="text-emerald-600 font-bold">{item.whatsapp}</span>
+                {/* Right Column: Orders & Unblock Button */}
+                <div className="flex items-center justify-between lg:justify-end gap-6 sm:gap-8 shrink-0">
+                  <div className="text-left lg:text-right space-y-0.5">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      {item.totalOrders} Pesanan
+                    </p>
+                    <p className="text-sm sm:text-base font-black text-slate-900">
+                      {formatRupiah(item.totalSpent)}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleUnblock(item)}
+                    className="px-4 sm:px-5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-xs border border-emerald-200 shadow-xs transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>Buka Blokir</span>
+                  </button>
                 </div>
               </div>
-
-              {/* Middle Orders & Spent Column */}
-              <div className="text-left md:text-right text-xs space-y-0.5">
-                <p className="font-extrabold text-slate-900">{item.totalOrders} Pesanan</p>
-                <p className="font-bold text-slate-400">Total: {formatRupiah(item.totalSpent)}</p>
-              </div>
-
-              {/* Right Action Button: Buka Blokir */}
-              <div className="shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-pink-50">
-                <button
-                  onClick={() => handleUnblock(item.id)}
-                  className="px-4 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-xs border border-emerald-200 shadow-xs transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
-                >
-                  <Unlock className="w-3.5 h-3.5" />
-                  <span>Buka Blokir</span>
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 

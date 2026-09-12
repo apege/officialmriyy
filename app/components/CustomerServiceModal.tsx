@@ -6,13 +6,19 @@ import { X, MessageCircle, Send, ShieldCheck, Clock } from "lucide-react";
 interface CustomerServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  whatsappNumber?: string;
+  storeName?: string;
 }
 
 export default function CustomerServiceModal({
   isOpen,
   onClose,
+  whatsappNumber = "6285624695885",
+  storeName = "official.mriyy",
 }: CustomerServiceModalProps) {
   if (!isOpen) return null;
+
+  const cleanWA = whatsappNumber.replace(/\D/g, "");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -32,7 +38,7 @@ export default function CustomerServiceModal({
           </div>
 
           <h3 className="text-lg sm:text-xl font-black text-slate-900">
-            Pusat Bantuan official.mriyy
+            Pusat Bantuan {storeName}
           </h3>
           <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
             Tim customer support kami online 24 jam siap membantu segala kendala transaksi kamu.
@@ -42,7 +48,7 @@ export default function CustomerServiceModal({
         {/* Channels */}
         <div className="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
           <a
-            href="https://wa.me/6281234567890?text=Halo%20Admin%20official.mriyy,%20saya%20butuh%20bantuan%20terkait%20top%20up%20Robux"
+            href={`https://wa.me/${cleanWA}?text=${encodeURIComponent(`Halo Admin ${storeName}, saya butuh bantuan terkait top up Robux`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors group cursor-pointer"

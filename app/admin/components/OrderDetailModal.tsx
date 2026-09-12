@@ -108,20 +108,28 @@ export default function OrderDetailModal({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {order.status !== "completed" && (
-              <button
-                onClick={() => onUpdateStatus(order.id, "completed")}
-                className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
-              >
-                Set Selesai
-              </button>
-            )}
             {order.status === "pending" && (
               <button
                 onClick={() => onUpdateStatus(order.id, "processing")}
                 className="px-3 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
               >
-                Set Diproses
+                Proses Pesanan
+              </button>
+            )}
+            {order.status === "processing" && (
+              <button
+                onClick={() => onUpdateStatus(order.id, "completed")}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+              >
+                Selesaikan Order
+              </button>
+            )}
+            {order.status !== "cancelled" && (
+              <button
+                onClick={() => onUpdateStatus(order.id, "cancelled")}
+                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-extrabold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+              >
+                Batalkan
               </button>
             )}
           </div>

@@ -10,120 +10,148 @@ import OrdersTab from "./components/OrdersTab";
 import ProductsTab from "./components/ProductsTab";
 import PelangganTab from "./components/PelangganTab";
 import BlacklistTab from "./components/BlacklistTab";
+import TestimoniTab from "./components/TestimoniTab";
 import KeuanganTab from "./components/KeuanganTab";
-import PaymentSettings from "./components/PaymentSettings";
 import SettingsTab from "./components/SettingsTab";
-import OrderDetailModal from "./components/OrderDetailModal";
-
-const INITIAL_ORDERS: OrderItem[] = [
-  {
-    id: "TRX-982101",
-    username: "BloxyKing99",
-    whatsapp: "081234567890",
-    packageName: "2.200 Robux Promo",
-    robuxAmount: 2200,
-    price: 45000,
-    paymentMethod: "website",
-    paymentGateway: "QRIS All Payment",
-    status: "pending",
-    createdAt: "Hari ini, 18:25 WIB",
-  },
-  {
-    id: "TRX-982102",
-    username: "RobloxSultan_ID",
-    whatsapp: "085712345678",
-    packageName: "10.000 Robux Sultan",
-    robuxAmount: 10000,
-    price: 190000,
-    paymentMethod: "website",
-    paymentGateway: "QRIS (BCA)",
-    status: "processing",
-    createdAt: "Hari ini, 18:10 WIB",
-  },
-  {
-    id: "TRX-982103",
-    username: "GamerGirl_Alya",
-    whatsapp: "089698765432",
-    packageName: "1.800 Robux Populer",
-    robuxAmount: 1800,
-    price: 35000,
-    paymentMethod: "whatsapp",
-    paymentGateway: "WhatsApp Admin",
-    status: "completed",
-    createdAt: "Hari ini, 17:45 WIB",
-  },
-  {
-    id: "TRX-982104",
-    username: "ProBuilder_Fajar",
-    whatsapp: "082133445566",
-    packageName: "5.500 Robux Promo",
-    robuxAmount: 5500,
-    price: 100000,
-    paymentMethod: "website",
-    paymentGateway: "QRIS (DANA)",
-    status: "completed",
-    createdAt: "Hari ini, 17:20 WIB",
-  },
-  {
-    id: "TRX-982105",
-    username: "NoobMaster69",
-    whatsapp: "081377889900",
-    packageName: "2.200 Robux Promo",
-    robuxAmount: 2200,
-    price: 45000,
-    paymentMethod: "website",
-    paymentGateway: "QRIS (GoPay)",
-    status: "pending",
-    createdAt: "Hari ini, 16:50 WIB",
-  },
-  {
-    id: "TRX-982106",
-    username: "AnimeRobloxer",
-    whatsapp: "087811223344",
-    packageName: "25.000 Robux Sultan",
-    robuxAmount: 25000,
-    price: 450000,
-    paymentMethod: "whatsapp",
-    status: "completed",
-    createdAt: "Kemarin, 21:15 WIB",
-  },
-  {
-    id: "TRX-982107",
-    username: "ChocoCookie_Gamer",
-    whatsapp: "083899001122",
-    packageName: "3.700 Robux Reguler",
-    robuxAmount: 3700,
-    price: 70000,
-    paymentMethod: "website",
-    status: "cancelled",
-    createdAt: "Kemarin, 19:30 WIB",
-  },
-];
+import OrderDetailView from "./components/OrderDetailView";
 
 export default function AdminPage() {
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [orders, setOrders] = useState<OrderItem[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const [isStoreOpen, setIsStoreOpen] = useState<boolean>(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
-  const pendingCount = orders.filter((o) => o.status === "pending").length + 66;
-  const processingCount = orders.filter((o) => o.status === "processing").length + 31;
+  // 1. Check Authentication on Mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isAuth = localStorage.getItem("officialmriyy_admin_auth");
+      const hasCookie = document.cookie.includes("officialmriyy_admin_token");
+      if (!isAuth && !hasCookie) {
+        router.replace("/admin/login");
+      } else {
+        setIsAuthenticated(true);
+      }
+    }
+  }, [router]);
 
-  const handleUpdateStatus = (orderId: string, newStatus: OrderItem["status"]) => {
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/orders");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && Array.isArray(data.orders)) {
+          const mapped: OrderItem[] = data.orders.map((o: any) => {
+            const isWa = String(o.payment_method || "").toLowerCase().includes("whatsapp");
+            return {
+              id: o.order_code,
+              username: o.roblox_username,
+              whatsapp: o.customer_phone,
+              packageName: `${new Intl.NumberFormat("id-ID").format(o.robux)} Robux`,
+              robuxAmount: Number(o.robux) || 0,
+              price: Number(o.price) || 0,
+              paymentMethod: isWa ? "whatsapp" : "website",
+              paymentGateway: isWa ? "WhatsApp Admin" : "QRIS All Payment",
+              status: o.order_status,
+              paymentProof: o.payment_proof_path || null,
+              customerNotes: o.customer_notes || null,
+              adminNotes: o.admin_notes || null,
+              robloxUserId: o.roblox_user_id || null,
+              createdAt: o.created_at
+                ? new Date(o.created_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }) + " WIB"
+                : "Hari ini",
+            };
+          });
+          setOrders(mapped);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchOrders();
+
+    // 1. Polling every 60s only when tab is active (saves Supabase quota/egress)
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchOrders();
+      }
+    }, 60000);
+
+    // 2. Fetch immediately when switching back to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrders();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isAuthenticated]);
+
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const processingCount = orders.filter((o) => o.status === "processing").length;
+  const completedCount = orders.filter((o) => o.status === "completed").length;
+  const cancelledCount = orders.filter((o) => o.status === "cancelled").length;
+
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderItem["status"]) => {
+    // Optimistic UI
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status: newStatus });
     }
+
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_code: orderId,
+          order_status: newStatus,
+        }),
+      });
+    } catch (err) {
+      console.error("Error updating order status:", err);
+      fetchOrders();
+    }
   };
 
-  const handleDeleteOrder = (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm(`Hapus pesanan #${orderId}?`)) return;
+
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder(null);
+    }
+
+    try {
+      await fetch(`/api/orders?order_code=${orderId}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Error deleting order:", err);
+      fetchOrders();
     }
   };
 
@@ -136,16 +164,36 @@ export default function AdminPage() {
     return "all";
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#FFF5F8] flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 rounded-2xl bg-pink-100 border border-pink-200 text-[#ff2a85] flex items-center justify-center animate-bounce mb-3 shadow-sm">
+          <span className="font-black text-xs">MRY</span>
+        </div>
+        <p className="text-xs font-bold text-slate-600 animate-pulse">
+          Memverifikasi Keamanan Akses Admin...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FFF9FA] flex flex-col lg:flex-row selection:bg-[#ff2a85] selection:text-white">
-      {/* Responsive Sidebar */}
+      {/* Responsive Sidebar (Desktop Sticky + Mobile Drawer) */}
       <AdminSidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setSelectedOrder(null);
+          setActiveTab(tab);
+        }}
         pendingCount={pendingCount}
         processingCount={processingCount}
+        completedCount={completedCount}
+        cancelledCount={cancelledCount}
         isStoreOpen={isStoreOpen}
         setIsStoreOpen={setIsStoreOpen}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       {/* Main Admin Content Container */}
@@ -155,59 +203,67 @@ export default function AdminPage() {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           pendingCount={pendingCount}
-          onRefreshData={() => setOrders([...orders])}
+          onRefreshData={fetchOrders}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          orders={orders}
+          onSelectOrder={setSelectedOrder}
+          setActiveTab={setActiveTab}
         />
 
         {/* Tab Content Area */}
         <main className="p-4 sm:p-6 lg:p-8 flex-1 overflow-x-hidden">
-          {activeTab === "overview" && (
-            <OverviewTab
-              orders={orders}
-              onSelectOrder={setSelectedOrder}
-              onGoToOrders={() => setActiveTab("order_masuk")}
-            />
-          )}
-
-          {(activeTab === "order_masuk" ||
-            activeTab === "order_diproses" ||
-            activeTab === "order_selesai" ||
-            activeTab === "order_dibatalkan") && (
-            <OrdersTab
-              orders={orders}
+          {selectedOrder ? (
+            <OrderDetailView
+              order={selectedOrder}
               activeTab={activeTab}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
+              onBack={() => setSelectedOrder(null)}
               onUpdateStatus={handleUpdateStatus}
-              onDeleteOrder={handleDeleteOrder}
-              onSelectOrder={setSelectedOrder}
             />
-          )}
+          ) : (
+            <>
+              {activeTab === "overview" && (
+                <OverviewTab
+                  orders={orders}
+                  onSelectOrder={setSelectedOrder}
+                  onGoToOrders={() => setActiveTab("order_masuk")}
+                />
+              )}
 
-          {activeTab === "products" && <ProductsTab />}
+              {(activeTab === "order_masuk" ||
+                activeTab === "order_diproses" ||
+                activeTab === "order_selesai" ||
+                activeTab === "order_dibatalkan") && (
+                <OrdersTab
+                  orders={orders}
+                  activeTab={activeTab}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  onUpdateStatus={handleUpdateStatus}
+                  onDeleteOrder={handleDeleteOrder}
+                  onSelectOrder={setSelectedOrder}
+                />
+              )}
 
-          {activeTab === "pelanggan" && <PelangganTab />}
+              {activeTab === "products" && <ProductsTab />}
 
-          {activeTab === "blacklist" && <BlacklistTab />}
+              {activeTab === "pelanggan" && <PelangganTab />}
 
-          {activeTab === "keuangan" && <KeuanganTab />}
+              {activeTab === "blacklist" && <BlacklistTab />}
 
-          {activeTab === "payments" && <PaymentSettings />}
+              {activeTab === "testimoni" && <TestimoniTab />}
 
-          {activeTab === "settings" && (
-            <SettingsTab
-              isStoreOpen={isStoreOpen}
-              setIsStoreOpen={setIsStoreOpen}
-            />
+              {activeTab === "keuangan" && <KeuanganTab />}
+
+              {activeTab === "settings" && (
+                <SettingsTab
+                  isStoreOpen={isStoreOpen}
+                  setIsStoreOpen={setIsStoreOpen}
+                />
+              )}
+            </>
           )}
         </main>
       </div>
-
-      {/* Order Detail Modal */}
-      <OrderDetailModal
-        order={selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-        onUpdateStatus={handleUpdateStatus}
-      />
     </div>
   );
 }

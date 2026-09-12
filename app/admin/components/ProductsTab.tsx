@@ -19,18 +19,43 @@ interface ExtendedPackage extends RobuxPackage {
 }
 
 export default function ProductsTab() {
-  const [packages, setPackages] = useState<ExtendedPackage[]>(
-    ROBUX_PACKAGES.map((p) => ({ ...p, inStock: true }))
-  );
+  const [packages, setPackages] = useState<ExtendedPackage[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState<ExtendedPackage | null>(null);
 
-  // Form State
+  // Form State: Only Robux amount and Price (Tags & Categories are 100% automated)
   const [formAmount, setFormAmount] = useState<number>(3000);
   const [formPrice, setFormPrice] = useState<number>(55000);
-  const [formOriginalPrice, setFormOriginalPrice] = useState<number>(65000);
-  const [formTag, setFormTag] = useState<"PROMO" | "POPULER" | "SULTAN" | "NONE">("NONE");
-  const [formCategory, setFormCategory] = useState<"populer" | "promo" | "sultan" | "reguler">("reguler");
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/products?all=true&_t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.products && Array.isArray(data.products)) {
+          const mapped: ExtendedPackage[] = data.products.map((p: any) => ({
+            id: p.id,
+            amount: Number(p.robux),
+            price: Number(p.price),
+            category: p.category || "reguler",
+            tag: p.tag,
+            inStock: p.is_active ?? true,
+          }));
+          setPackages(mapped);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching products:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -44,23 +69,53 @@ export default function ProductsTab() {
     return new Intl.NumberFormat("id-ID").format(num);
   };
 
-  const handleToggleStock = (id: number) => {
+  const handleToggleStock = async (id: number) => {
+    const target = packages.find((p) => p.id === id);
+    if (!target) return;
+    const nextState = !target.inStock;
+
+    // Optimistic UI
     setPackages((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, inStock: !p.inStock } : p))
+      prev.map((p) => (p.id === id ? { ...p, inStock: nextState } : p))
     );
+
+    try {
+      await fetch("/api/products", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          name: `${formatRobux(target.amount)} Robux`,
+          robux: target.amount,
+          price: target.price,
+          is_active: nextState,
+        }),
+      });
+    } catch (err) {
+      console.error("Error toggling stock:", err);
+      fetchProducts();
+    }
   };
 
-  const handleDeletePackage = (id: number) => {
+  const handleDeletePackage = async (id: number) => {
+    if (!confirm("Yakin ingin menghapus paket produk ini?")) return;
+
     setPackages((prev) => prev.filter((p) => p.id !== id));
+
+    try {
+      await fetch(`/api/products?id=${id}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      fetchProducts();
+    }
   };
 
   const handleOpenAddModal = () => {
     setEditingPkg(null);
     setFormAmount(3000);
     setFormPrice(55000);
-    setFormOriginalPrice(65000);
-    setFormTag("NONE");
-    setFormCategory("reguler");
     setIsAddModalOpen(true);
   };
 
@@ -68,17 +123,15 @@ export default function ProductsTab() {
     setEditingPkg(pkg);
     setFormAmount(pkg.amount);
     setFormPrice(pkg.price);
-    setFormOriginalPrice(pkg.originalPrice || 0);
-    setFormTag(pkg.tag || "NONE");
-    setFormCategory(pkg.category);
     setIsAddModalOpen(true);
   };
 
-  const handleSavePackage = (e: React.FormEvent) => {
+  const handleSavePackage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tagVal = formTag === "NONE" ? undefined : formTag;
+    const productName = `${formatRobux(formAmount)} Robux`;
 
     if (editingPkg) {
+      // Optimistic update
       setPackages((prev) =>
         prev.map((p) =>
           p.id === editingPkg.id
@@ -86,31 +139,53 @@ export default function ProductsTab() {
                 ...p,
                 amount: Number(formAmount),
                 price: Number(formPrice),
-                originalPrice: formOriginalPrice > 0 ? Number(formOriginalPrice) : undefined,
-                tag: tagVal,
-                category: formCategory,
               }
             : p
         )
       );
+
+      try {
+        await fetch("/api/products", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingPkg.id,
+            name: productName,
+            robux: Number(formAmount),
+            price: Number(formPrice),
+            is_active: editingPkg.inStock ?? true,
+          }),
+        });
+        fetchProducts();
+      } catch (err) {
+        console.error("Error updating product:", err);
+      }
     } else {
-      const newPkg: ExtendedPackage = {
-        id: Date.now(),
-        amount: Number(formAmount),
-        price: Number(formPrice),
-        originalPrice: formOriginalPrice > 0 ? Number(formOriginalPrice) : undefined,
-        tag: tagVal,
-        category: formCategory,
-        inStock: true,
-      };
-      setPackages((prev) => [...prev, newPkg]);
+      try {
+        const res = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: productName,
+            robux: Number(formAmount),
+            price: Number(formPrice),
+            is_active: true,
+          }),
+        });
+
+        if (res.ok) {
+          fetchProducts();
+        }
+      } catch (err) {
+        console.error("Error creating product:", err);
+      }
     }
     setIsAddModalOpen(false);
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* 1. Header Bar (Matching Screenshot 6) */}
+      {/* 1. Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -121,18 +196,35 @@ export default function ProductsTab() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#ff2a85] to-[#e60067] hover:from-[#e60067] hover:to-[#be1251] text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Tambah Nominal Baru</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={fetchProducts}
+            disabled={loading}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-pink-50 hover:bg-pink-100 text-[#ff2a85] font-extrabold text-xs border border-pink-200 shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+          >
+            <span>{loading ? "Memuat..." : "Refresh"}</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#ff2a85] to-[#e60067] hover:from-[#e60067] hover:to-[#be1251] text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Tambah Nominal Baru</span>
+          </button>
+        </div>
       </div>
 
-      {/* 2. Package Grid Cards (Matching Screenshot 6 layout) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {packages.map((pkg) => (
+      {/* 2. Package Grid Cards */}
+      {packages.length === 0 && !loading ? (
+        <div className="rounded-3xl bg-white border border-pink-100 p-8 text-center space-y-3">
+          <Package className="w-10 h-10 text-pink-300 mx-auto" />
+          <p className="text-sm font-bold text-slate-700">Belum ada paket produk di database.</p>
+          <p className="text-xs text-slate-400">Klik &quot;Tambah Nominal Baru&quot; untuk menambahkan paket.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {packages.map((pkg) => (
           <div
             key={pkg.id}
             className={`rounded-3xl bg-white border p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between space-y-4 ${
@@ -223,6 +315,7 @@ export default function ProductsTab() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Add / Edit Package Modal */}
       {isAddModalOpen && (
@@ -247,79 +340,43 @@ export default function ProductsTab() {
                   Jumlah Robux
                 </label>
                 <input
-                  type="number"
-                  value={formAmount}
-                  onChange={(e) => setFormAmount(Number(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  value={formAmount > 0 ? new Intl.NumberFormat("id-ID").format(formAmount) : ""}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    setFormAmount(raw ? Number(raw) : 0);
+                  }}
                   required
-                  placeholder="Contoh: 2200"
-                  className="w-full px-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] outline-none text-xs font-bold text-slate-900"
+                  placeholder="Contoh: 2.200"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white outline-none text-xs font-bold text-slate-900"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Harga Jual (Rp)
-                  </label>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Harga Jual (Rp)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400">
+                    Rp
+                  </span>
                   <input
-                    type="number"
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(Number(e.target.value))}
+                    type="text"
+                    inputMode="numeric"
+                    value={formPrice > 0 ? new Intl.NumberFormat("id-ID").format(formPrice) : ""}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      setFormPrice(raw ? Number(raw) : 0);
+                    }}
                     required
-                    placeholder="Contoh: 45000"
-                    className="w-full px-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] outline-none text-xs font-bold text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Harga Coret (Rp)
-                  </label>
-                  <input
-                    type="number"
-                    value={formOriginalPrice}
-                    onChange={(e) => setFormOriginalPrice(Number(e.target.value))}
-                    placeholder="Opsional, misal: 52000"
-                    className="w-full px-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] outline-none text-xs font-bold text-slate-900"
+                    placeholder="Contoh: 45.000"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] focus:bg-white outline-none text-xs font-bold text-slate-900"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Badge / Tag
-                  </label>
-                  <select
-                    value={formTag}
-                    onChange={(e) => setFormTag(e.target.value as any)}
-                    className="w-full px-3 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] outline-none text-xs font-bold text-slate-900 cursor-pointer"
-                  >
-                    <option value="NONE">Tanpa Badge</option>
-                    <option value="PROMO">PROMO</option>
-                    <option value="POPULER">POPULER</option>
-                    <option value="SULTAN">SULTAN</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Kategori Tab
-                  </label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value as any)}
-                    className="w-full px-3 py-2.5 rounded-2xl bg-pink-50/30 border border-pink-200 focus:border-[#ff2a85] outline-none text-xs font-bold text-slate-900 cursor-pointer"
-                  >
-                    <option value="reguler">Reguler</option>
-                    <option value="promo">Promo</option>
-                    <option value="populer">Populer</option>
-                    <option value="sultan">Paket Sultan</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}

@@ -10,6 +10,10 @@ export interface OrderItem {
   status: "pending" | "processing" | "completed" | "cancelled";
   createdAt: string;
   avatarSeed?: string;
+  paymentProof?: string | null;
+  customerNotes?: string | null;
+  adminNotes?: string | null;
+  robloxUserId?: string | null;
 }
 
 export type AdminTab =
@@ -23,5 +27,4 @@ export type AdminTab =
   | "blacklist"
   | "testimoni"
   | "keuangan"
-  | "payments"
   | "settings";

@@ -30,17 +30,17 @@ export default function CartDrawer({
   if (!isOpen) return null;
 
   const totalAmount = cartItems.reduce(
-    (sum, item) => sum + item.package.price * item.quantity,
+    (sum, item) => sum + (item.package ? item.package.price * (item.quantity || 1) : 0),
     0
   );
 
   const totalRobux = cartItems.reduce(
-    (sum, item) => sum + item.package.amount * item.quantity,
+    (sum, item) => sum + (item.package ? item.package.amount * (item.quantity || 1) : 0),
     0
   );
 
   const totalItemsCount = cartItems.reduce(
-    (sum, item) => sum + item.quantity,
+    (sum, item) => sum + (item.quantity || 0),
     0
   );
 
@@ -105,7 +105,9 @@ export default function CartDrawer({
                 </p>
               </div>
             ) : (
-              cartItems.map((item) => (
+              cartItems
+                .filter((item) => Boolean(item.package))
+                .map((item) => (
                 <div
                   key={item.package.id}
                   className="p-3 sm:p-3.5 rounded-2xl bg-pink-50/30 border border-pink-200/80 space-y-2.5"
