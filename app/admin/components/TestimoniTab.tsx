@@ -20,7 +20,11 @@ import {
   MessageSquare,
   Sparkles,
   CornerDownRight,
+  Upload,
+  Loader2,
+  Link2,
 } from "lucide-react";
+import { compressImage } from "@/lib/image-compression";
 
 export interface TestimonialData {
   id: string;
@@ -75,6 +79,59 @@ export default function TestimoniTab() {
   const [formCustomRobux, setFormCustomRobux] = useState(false);
   const [formIsVisible, setFormIsVisible] = useState(true);
   const [formProofUrl, setFormProofUrl] = useState("");
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [proofInputMode, setProofInputMode] = useState<"file" | "url">("file");
+  const [urlInputVal, setUrlInputVal] = useState("");
+  const proofFileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleFileProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("File harus berupa gambar (JPG, PNG, WEBP)!");
+      return;
+    }
+
+    try {
+      setIsUploadingProof(true);
+      let fileToUpload: File = file;
+      try {
+        fileToUpload = await compressImage(file, 1000, 0.8);
+      } catch (cErr) {
+        console.warn("Compression fallback:", cErr);
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+      formData.append("folder", "testimonials");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          setFormProofUrl(data.url);
+          showToast("Foto bukti berhasil diupload!");
+        } else {
+          showToast("Gagal mendapatkan URL gambar!");
+        }
+      } else {
+        showToast("Gagal mengupload gambar ke server!");
+      }
+    } catch (err: any) {
+      console.error("Upload proof error:", err);
+      showToast("Terjadi kesalahan saat upload foto bukti!");
+    } finally {
+      setIsUploadingProof(false);
+      if (proofFileInputRef.current) {
+        proofFileInputRef.current.value = "";
+      }
+    }
+  };
 
   // Reply Modal states
   const [replyingItem, setReplyingItem] = useState<TestimonialData | null>(null);
@@ -188,6 +245,8 @@ export default function TestimoniTab() {
     setFormCustomRobux(false);
     setFormIsVisible(true);
     setFormProofUrl("");
+    setProofInputMode("file");
+    setUrlInputVal("");
     setIsModalOpen(true);
   };
 
@@ -201,6 +260,8 @@ export default function TestimoniTab() {
     setFormCustomRobux(false);
     setFormIsVisible(item.isVisible);
     setFormProofUrl(item.proofImageUrl || "");
+    setProofInputMode(item.proofImageUrl ? "url" : "file");
+    setUrlInputVal(item.proofImageUrl || "");
     setIsModalOpen(true);
   };
 
@@ -208,7 +269,7 @@ export default function TestimoniTab() {
   const handleSubmitModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formUsername.trim() || !formComment.trim()) {
-      alert("Mohon isi username dan ulasan!");
+      showToast("Mohon isi username dan ulasan!");
       return;
     }
 
@@ -827,58 +888,152 @@ export default function TestimoniTab() {
               </div>
 
               {/* Foto Bukti Transfer / Landing (Opsional) */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-800 mb-1.5">
-                  Foto Bukti Transfer / Landing (Opsional)
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-slate-800">
+                    Foto Bukti Transfer / Landing (Opsional)
+                  </label>
+                  {!formProofUrl && (
+                    <div className="flex items-center gap-1 bg-pink-50/80 p-0.5 rounded-xl border border-pink-100 text-[11px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setProofInputMode("file")}
+                        className={`px-2.5 py-1 rounded-lg transition-all ${
+                          proofInputMode === "file"
+                            ? "bg-white text-[#ff2a85] shadow-xs font-black"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        Pilih File
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProofInputMode("url")}
+                        className={`px-2.5 py-1 rounded-lg transition-all ${
+                          proofInputMode === "url"
+                            ? "bg-white text-[#ff2a85] shadow-xs font-black"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        Link URL
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={proofFileInputRef}
+                  accept="image/*"
+                  onChange={handleFileProofUpload}
+                  className="hidden"
+                />
 
                 {formProofUrl ? (
-                  <div className="p-3 rounded-2xl border border-pink-200 bg-pink-50/30 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-900 shrink-0">
+                  <div className="p-3.5 rounded-2xl border border-pink-200 bg-pink-50/40 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-pink-200 shadow-xs">
                         <img
                           src={formProofUrl}
                           alt="Preview"
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">
-                          Foto bukti terpasang
+                      <div className="truncate">
+                        <p className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span>Foto Bukti Terpasang</span>
                         </p>
-                        <p className="text-[10px] text-slate-400">
-                          Format JPG/PNG online
+                        <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5 max-w-[200px] sm:max-w-xs">
+                          {formProofUrl}
                         </p>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setFormProofUrl("")}
-                      className="px-3 py-1 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold hover:bg-rose-100 transition-colors"
-                    >
-                      Hapus
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => proofFileInputRef.current?.click()}
+                        className="px-2.5 py-1.5 rounded-xl bg-white border border-pink-200 text-[#ff2a85] text-xs font-bold hover:bg-pink-50 transition-colors"
+                      >
+                        Ganti
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormProofUrl("");
+                          setUrlInputVal("");
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold hover:bg-rose-100 transition-colors"
+                      >
+                        Hapus
+                      </button>
+                    </div>
                   </div>
-                ) : (
+                ) : proofInputMode === "file" ? (
                   <div
                     onClick={() => {
-                      const url = prompt(
-                        "Masukkan URL Gambar Bukti Transaksi (misal: link imgur atau unsplash):",
-                        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80"
-                      );
-                      if (url) setFormProofUrl(url);
+                      if (!isUploadingProof) {
+                        proofFileInputRef.current?.click();
+                      }
                     }}
-                    className="border-2 border-dashed border-pink-200 hover:border-[#ff2a85] bg-pink-50/20 rounded-2xl p-6 text-center cursor-pointer transition-all space-y-1.5 group"
+                    className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all space-y-2 group ${
+                      isUploadingProof
+                        ? "border-[#ff2a85] bg-pink-50/40 cursor-wait"
+                        : "border-pink-200 hover:border-[#ff2a85] bg-pink-50/20 hover:bg-pink-50/30"
+                    }`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-pink-100 text-[#ff2a85] mx-auto flex items-center justify-center group-hover:scale-105 transition-transform">
-                      <UploadCloud className="w-5 h-5" />
+                    {isUploadingProof ? (
+                      <div className="flex flex-col items-center justify-center space-y-2 py-1">
+                        <Loader2 className="w-7 h-7 text-[#ff2a85] animate-spin" />
+                        <p className="text-xs font-extrabold text-[#ff2a85]">
+                          Sedang mengupload & mengompresi gambar...
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-pink-100 text-[#ff2a85] mx-auto flex items-center justify-center group-hover:scale-105 transition-transform">
+                          <UploadCloud className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">
+                            Pilih Foto dari Galeri / Komputer
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                            Format JPG, PNG, WEBP (Maksimal 5MB)
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-3 rounded-2xl border border-pink-200 bg-pink-50/20">
+                    <div className="relative">
+                      <input
+                        type="url"
+                        value={urlInputVal}
+                        onChange={(e) => setUrlInputVal(e.target.value)}
+                        placeholder="Tempel link URL gambar (misal: https://...)"
+                        className="w-full pl-3 pr-20 py-2.5 rounded-xl bg-white border border-pink-200 focus:border-[#ff2a85] text-xs font-medium text-slate-800 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (urlInputVal.trim()) {
+                            setFormProofUrl(urlInputVal.trim());
+                            showToast("Link gambar berhasil dipasang!");
+                          } else {
+                            showToast("Mohon masukkan link URL gambar!");
+                          }
+                        }}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-[#ff2a85] text-white text-xs font-bold hover:bg-[#e60067] transition-all"
+                      >
+                        Pasang
+                      </button>
                     </div>
-                    <p className="text-xs font-bold text-slate-800">
-                      Klik untuk upload foto bukti
-                    </p>
                     <p className="text-[10px] text-slate-400 font-medium">
-                      Format JPG, PNG, WEBP (Max 5MB)
+                      Bisa menggunakan link direct image (Imgur, Unsplash, Cloudinary, dsb)
                     </p>
                   </div>
                 )}
