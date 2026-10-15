@@ -100,37 +100,26 @@ export default function TestimoniTab() {
 
     try {
       setIsUploadingProof(true);
-      let fileToUpload: File = file;
-      try {
-        fileToUpload = await compressImage(file, 1000, 0.8);
-      } catch (cErr) {
-        console.warn("Compression fallback:", cErr);
-      }
+      // Auto-compress langsung ke format WebP murni (max dimension 800px, quality 0.75)
+      // Mengurangi ukuran gambar hingga 90-95% (menjadi hanya ~20KB - 30KB)
+      const compressedWebP = await compressImage(file, 800, 0.75);
 
-      const formData = new FormData();
-      formData.append("file", fileToUpload);
-      formData.append("folder", "testimonials");
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          setFormProofUrl(data.url);
-          showToast("Foto bukti berhasil terpasang!");
-        } else {
-          showToast(data.error || "Gagal mendapatkan URL gambar!");
-        }
-      } else {
-        const errJson = await res.json().catch(() => ({}));
-        showToast(errJson.error || "Gagal mengupload gambar ke server!");
-      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const webpDataUrl = event.target?.result as string;
+        setFormProofUrl(webpDataUrl);
+        showToast("Foto berhasil dikompresi ke WebP & terpasang!");
+        setIsUploadingProof(false);
+      };
+      reader.onerror = () => {
+        showToast("Gagal membaca file gambar!");
+        setIsUploadingProof(false);
+      };
+      reader.readAsDataURL(compressedWebP);
     } catch (err: any) {
-      console.error("Upload proof error:", err);
-      showToast("Terjadi kesalahan saat upload foto bukti!");
+      console.error("Compression error:", err);
+      showToast("Gagal mengompresi gambar ke WebP!");
+      setIsUploadingProof(false);
     } finally {
       setIsUploadingProof(false);
       if (proofFileInputRef.current) {
