@@ -28,6 +28,7 @@ import { compressImage } from "@/lib/image-compression";
 
 export interface TestimonialData {
   id: string;
+  rawDbId?: number;
   username: string;
   initial: string;
   initialBg: string;
@@ -88,7 +89,11 @@ export default function TestimoniTab() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    const isImage =
+      (file.type && file.type.startsWith("image/")) ||
+      /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(file.name);
+
+    if (!isImage && file.type) {
       showToast("File harus berupa gambar (JPG, PNG, WEBP)!");
       return;
     }
@@ -115,12 +120,13 @@ export default function TestimoniTab() {
         const data = await res.json();
         if (data.url) {
           setFormProofUrl(data.url);
-          showToast("Foto bukti berhasil diupload!");
+          showToast("Foto bukti berhasil terpasang!");
         } else {
-          showToast("Gagal mendapatkan URL gambar!");
+          showToast(data.error || "Gagal mendapatkan URL gambar!");
         }
       } else {
-        showToast("Gagal mengupload gambar ke server!");
+        const errJson = await res.json().catch(() => ({}));
+        showToast(errJson.error || "Gagal mengupload gambar ke server!");
       }
     } catch (err: any) {
       console.error("Upload proof error:", err);
@@ -159,6 +165,7 @@ export default function TestimoniTab() {
             const rawUser = t.name.replace(/^@/, "");
             return {
               id: `TESTI-${String(t.id).padStart(3, "0")}`,
+              rawDbId: Number(t.id),
               username: rawUser,
               initial: rawUser.charAt(0).toUpperCase() || "M",
               initialBg: [
@@ -277,40 +284,37 @@ export default function TestimoniTab() {
 
     if (editingItem) {
       // Edit existing
-      setTestimonials((prev) =>
-        prev.map((t) =>
-          t.id === editingItem.id
-            ? {
-                ...t,
-                username: cleanUsername,
-                rating: formRating,
-                comment: formComment,
-                robuxAmount: formRobuxAmount,
-                orderTag: `#${formRobuxAmount}`,
-                isVisible: formIsVisible,
-                hasProofImage: !!formProofUrl.trim(),
-                proofImageUrl: formProofUrl.trim() || undefined,
-              }
-            : t
-        )
-      );
-
-      const rawId = parseInt(editingItem.id.replace(/\D/g, ""), 10);
+      const rawId = editingItem.rawDbId || parseInt(editingItem.id.replace(/\D/g, ""), 10);
       if (!isNaN(rawId)) {
         try {
-          await fetch("/api/testimonials", {
+          const res = await fetch("/api/testimonials", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: rawId,
+              name: cleanUsername,
+              message: formComment,
+              rating: formRating,
+              order_code: formRobuxAmount,
               status: formIsVisible ? "approved" : "rejected",
+              image_path: formProofUrl.trim() || null,
+              isAdmin: true,
             }),
           });
-        } catch (err) {
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || "Gagal memperbarui testimoni di server");
+          }
+
+          showToast(`Testimoni @${cleanUsername} berhasil diperbarui!`);
+          fetchTestimonials();
+        } catch (err: any) {
           console.error("Error updating testimonial:", err);
+          showToast(`Gagal update: ${err.message || "Terjadi kesalahan"}`);
+          return;
         }
       }
-      showToast(`Testimoni @${cleanUsername} berhasil diperbarui!`);
     } else {
       // Create new
       try {
@@ -323,32 +327,22 @@ export default function TestimoniTab() {
             rating: formRating,
             image_path: formProofUrl.trim() || null,
             order_code: formRobuxAmount,
+            isAdmin: true,
           }),
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          const newItem: TestimonialData = {
-            id: `TESTI-${String(data.testimonial?.id || Date.now()).slice(-4)}`,
-            username: cleanUsername,
-            initial: cleanUsername.charAt(0).toUpperCase() || "M",
-            initialBg: "bg-pink-600",
-            rating: formRating,
-            time: "Baru saja",
-            comment: formComment,
-            robuxAmount: formRobuxAmount,
-            orderTag: `#${formRobuxAmount}`,
-            isVerified: true,
-            isVisible: true,
-            hasProofImage: !!formProofUrl.trim(),
-            proofImageUrl: formProofUrl.trim() || undefined,
-          };
-          setTestimonials((prev) => [newItem, ...prev]);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Gagal menyimpan testimoni di server");
         }
-      } catch (err) {
+
+        showToast(`Testimoni @${cleanUsername} berhasil ditambahkan!`);
+        fetchTestimonials();
+      } catch (err: any) {
         console.error("Error saving testimonial:", err);
+        showToast(`Gagal: ${err.message || "Gagal menyimpan testimoni"}`);
+        return;
       }
-      showToast(`Testimoni @${cleanUsername} berhasil ditambahkan!`);
     }
 
     setIsModalOpen(false);
@@ -364,7 +358,7 @@ export default function TestimoniTab() {
       prev.map((t) => (t.id === id ? { ...t, isVisible: nextVal } : t))
     );
 
-    const rawId = parseInt(id.replace(/\D/g, ""), 10);
+    const rawId = target.rawDbId || parseInt(id.replace(/\D/g, ""), 10);
     if (!isNaN(rawId)) {
       try {
         await fetch("/api/testimonials", {
@@ -373,8 +367,10 @@ export default function TestimoniTab() {
           body: JSON.stringify({
             id: rawId,
             status: nextVal ? "approved" : "rejected",
+            isAdmin: true,
           }),
         });
+        fetchTestimonials();
       } catch (err) {
         console.error("Error updating status:", err);
       }
@@ -391,14 +387,15 @@ export default function TestimoniTab() {
   const handleDeleteTestimonial = async (item: TestimonialData) => {
     if (!confirm(`Hapus testimoni dari @${item.username}?`)) return;
 
+    const rawId = item.rawDbId || parseInt(item.id.replace(/\D/g, ""), 10);
     setTestimonials((prev) => prev.filter((t) => t.id !== item.id));
 
-    const rawId = parseInt(item.id.replace(/\D/g, ""), 10);
     if (!isNaN(rawId)) {
       try {
         await fetch(`/api/testimonials?id=${rawId}`, {
           method: "DELETE",
         });
+        fetchTestimonials();
       } catch (err) {
         console.error("Error deleting testimonial:", err);
       }
@@ -417,7 +414,7 @@ export default function TestimoniTab() {
     e.preventDefault();
     if (!replyingItem) return;
 
-    const rawId = parseInt(replyingItem.id.replace(/\D/g, ""), 10);
+    const rawId = replyingItem.rawDbId || parseInt(replyingItem.id.replace(/\D/g, ""), 10);
     const replyObj = replyText.trim()
       ? { text: replyText.trim(), repliedAt: "Baru saja" }
       : null;
@@ -436,8 +433,10 @@ export default function TestimoniTab() {
           body: JSON.stringify({
             id: rawId,
             admin_reply: replyObj,
+            isAdmin: true,
           }),
         });
+        fetchTestimonials();
       } catch (err) {
         console.error("Error saving admin reply:", err);
       }

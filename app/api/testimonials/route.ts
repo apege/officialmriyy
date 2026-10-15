@@ -128,10 +128,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const cookieToken = req.cookies.get("officialmriyy_admin_token")?.value;
+    const isRequestAdmin = isAdmin === true || cookieToken === "valid_session";
+
     const effectiveToken = (token || order_code || "").trim();
 
     // If not admin, verify token & ensure single-use per order
-    if (!isAdmin) {
+    if (!isRequestAdmin) {
       if (!effectiveToken) {
         return NextResponse.json(
           { error: "Token review / Kode transaksi wajib disertakan untuk mencegah spam." },
@@ -208,7 +211,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, name, message, rating, status, image_path, admin_reply } = body;
+    const { id, name, message, rating, status, image_path, admin_reply, order_code } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -227,11 +230,12 @@ export async function PATCH(req: NextRequest) {
     if (status !== undefined) updateData.status = status;
     if (image_path !== undefined) updateData.image_path = image_path;
     if (admin_reply !== undefined) updateData.admin_reply = admin_reply;
+    if (order_code !== undefined) updateData.order_code = order_code;
 
     const { data, error } = await supabaseAdmin
       .from("testimonials")
       .update(updateData)
-      .eq("id", id)
+      .eq("id", Number(id))
       .select()
       .single();
 
